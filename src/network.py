@@ -1,50 +1,6 @@
 import networkx as nx
 
 
-class Node:
-    """
-    Represents a node (user) in the social network.
-
-    Attributes:
-        id (int): Unique identifier for the node.
-        initial_influence (float, optional): Initial influence probability
-            for the Independent Cascade diffusion model. Defaults to None.
-    """
-
-    def __init__(self, node_id: int, initial_influence: float = None) -> None:
-        """
-        Initializes a Node object.
-
-        Args:
-            node_id (int): Unique identifier for the node.
-            initial_influence (float, optional): Initial influence probability
-                for the Independent Cascade diffusion model. Defaults to None.
-        """
-
-        self.id = node_id
-        self.initial_influence = initial_influence
-
-    def __str__(self) -> str:
-        """
-        Returns a string representation of the node.
-
-        Returns:
-            str: A string representation of the node in the format "Node {id}".
-        """
-
-        return f"Node {self.id}"
-
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the node for debugging purposes.
-
-        Returns:
-            str: A string representation of the node in the format "Node {id}".
-        """
-
-        return f"Node {self.id}"
-
-
 class Network:
     """
     Represents a social network as a graph using NetworkX.
@@ -69,7 +25,7 @@ class Network:
         else:
             self.graph = nx.Graph()
 
-    def add_node(self, node: Node) -> None:
+    def add_node(self, node: int) -> None:
         """
         Adds a node to the network.
 
@@ -77,28 +33,39 @@ class Network:
             node (Node): The node object to be added to the network.
         """
 
-        self.graph.add_node(node.id, node=node)  # Store the entire Node object
+        self.graph.add_node(node, node=node)
 
-    def add_edge(self, source: Node, target: Node) -> None:
+    def add_edge(self, source: int, target: int) -> None:
         """
         Adds an edge between two nodes in the network.
 
         Args:
-            source (Node): The source node of the edge.
-            target (Node): The target node of the edge.
+            source (int): The source node id of the edge.
+            target (int): The target node id of the edge.
         """
 
-        self.graph.add_edge(source.id, target.id)
+        self.graph.add_edge(source, target)
 
-    def get_nodes(self) -> list[Node]:
+    def get_nodes(self) -> list[int]:
         """
         Returns a list of all nodes in the network.
 
         Returns:
-            list[Node]: A list containing all Node objects in the network.
+            list[int]: A list containing all Node ids in the network.
         """
+        return self.graph.nodes()
 
-        return [data["node"] for _, data in self.graph.nodes(data=True)]
+    def get_v_prime(self):
+        """
+        Calculates the number of nodes with degree greater than 1 (V').
+
+        Args:
+            network (Network): The network object.
+
+        Returns:
+            int: The number of nodes with degree greater than 1 (V').
+        """
+        return sum(degree > 1 for _, degree in self.graph.degree())
 
     def __str__(self) -> str:
         """
