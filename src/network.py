@@ -24,6 +24,7 @@ class Network:
             self.graph = nx.DiGraph()
         else:
             self.graph = nx.Graph()
+        self.v_prime: list[int] = self.get_v_prime()
 
     def add_node(self, node: int) -> None:
         """
@@ -57,7 +58,7 @@ class Network:
 
     def get_v_prime(self):
         """
-        Calculates the number of nodes with degree greater than 1 (V').
+        Returns the nodes with degree greater than 1 (V').
 
         Args:
             network (Network): The network object.
@@ -65,7 +66,7 @@ class Network:
         Returns:
             int: The number of nodes with degree greater than 1 (V').
         """
-        return sum(degree > 1 for _, degree in self.graph.degree())
+        return [node for node, degree in self.graph.degree if degree > 1]
 
     def __str__(self) -> str:
         """
