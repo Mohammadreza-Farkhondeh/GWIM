@@ -275,15 +275,15 @@ class GWIMOptimizer:
 
         for t in range(max_t):
             # Omega wolves update
-            for omega_wolve in self.omega_wolves:
-                omega_wolve.update_position(
+            for omega_wolf in self.omega_wolves:
+                omega_wolf.update_position(
                     X_alpha=self.alpha_wolf.position,
                     X_beta=self.beta_wolf.position,
                     X_delta=self.delta_wolf.position,
                     A=A,
                     C=C,
                 )
-                omega_wolve.update_seed_set(network=self.network, k=self.k)
+                omega_wolf.update_seed_set(network=self.network, k=self.k)
 
             self.evaluate_population_fitness()
             self.update_wolf_hierarchy()
