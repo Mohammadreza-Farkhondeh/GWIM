@@ -10,7 +10,14 @@ class Network:
         graph (networkx.Graph or networkx.DiGraph): The underlying NetworkX graph object.
     """
 
-    def __init__(self, directed: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        nodes: list = None,
+        edges: list = None,
+        graph: nx.Graph = None,
+        directed: bool = False,
+    ) -> None:
         """
         Initializes a Network object.
 
@@ -20,10 +27,11 @@ class Network:
         """
 
         self.directed = directed
-        if directed:
-            self.graph = nx.DiGraph()
+        if graph:
+            self.graph = graph
         else:
-            self.graph = nx.Graph()
+            self.graph = nx.DiGraph(edges) if directed else nx.Graph(edges)
+
         self.v_prime: list[int] = self.get_v_prime()
 
     def add_node(self, node: int) -> None:

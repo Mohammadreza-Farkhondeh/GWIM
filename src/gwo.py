@@ -1,6 +1,7 @@
 import numpy as np
 
 from src.network import Network
+from src.optim import NeighborsDiversityFitnessMixin
 
 
 class Wolf:
@@ -78,7 +79,10 @@ class Wolf:
 
         v_prime = self.v_prime
         sorted_nodes = sorted(
-            network.get_nodes()[:v_prime], key=lambda x: self.position[x], reverse=True
+            set(network.get_nodes()).intersection(v_prime),
+            # TODO TODO TODO TODO TODO: FIX sorting key
+            key=lambda x: self.position[1],
+            reverse=True,
         )
         self.seed_set = sorted_nodes[:k]
 
@@ -86,7 +90,18 @@ class Wolf:
         self.fitness_score = fitness_score
 
 
-class GWIMOptimizer:
+class BaseGWO:
+    def __init__(self, n: int):
+        self.n = n
+
+    def initialize_population(self):
+        raise NotImplementedError("Not implmnted run gwo")
+
+    def run_gwo(self, max_t: int) -> Wolf:
+        raise NotImplementedError("Not implmnted run gwo")
+
+
+class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
     """
     Implements the Grey Wolf Optimization (GWO) algorithm for identifying optimal seed sets
     in a social network diffusion process.
@@ -117,9 +132,12 @@ class GWIMOptimizer:
             n (int): The number of wolves in the GWO population.
             k (int): The size of seed sets for each wolf.
         """
+        BaseGWO.__init__(self, n=n)
+        NeighborsDiversityFitnessMixin.__init__(self, network, k)
+
         self.n = n
         self.k = k
-        self.population = []
+        self.population: [Wolf] = []
         self.alpha_wolf: Wolf = None
         self.beta_wolf: Wolf = None
         self.delta_wolf: Wolf = None
@@ -217,8 +235,8 @@ class GWIMOptimizer:
 
         network = self.network
         W_S = 0  # Total worthiness of nodes in the seed set
-
-        for node in seedset:
+        seedset = seedset if isinstance(seedset, list) else [seedset]
+        for node in list(seedset):
             # Calculate node worthiness (w(v_j))
             w_j = network.graph.degree(node) * len(
                 list(network.graph.neighbors(node))
@@ -252,10 +270,10 @@ class GWIMOptimizer:
         """
 
         for wolf in self.population:
-            fitness_score = self.fitness_function(wolf.seedset)
-            wolf.set_fitness_score(fitness_score)
+            fitness_score = self.fitness_function(wolf.seed_set)
+            wolf.set_fitness_score(fitness_score=fitness_score)
 
-    def run_gwo(self, max_t: int) -> Wolf:
+    def run_gwo(self, max_t: int, optimize: bool = False) -> Wolf:
         """
         Runs the GWIM algorithm for influence maximization.
 
@@ -284,6 +302,10 @@ class GWIMOptimizer:
                     C=C,
                 )
                 omega_wolf.update_seed_set(network=self.network, k=self.k)
+                if optimize:
+                    omega_wolf.seed_set = self.optimize_seed_set(
+                        omega_wolf, self.fitness_function, a=0.5
+                    )
 
             self.evaluate_population_fitness()
             self.update_wolf_hierarchy()
