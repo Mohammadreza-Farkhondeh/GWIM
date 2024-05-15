@@ -2,7 +2,6 @@ from typing import Callable
 
 import networkx as nx
 
-from src.gwo import Wolf
 from src.network import Network
 
 
@@ -78,7 +77,7 @@ class NeighborsDiversityFitnessMixin:
         return neighbors
 
     def optimize_seed_set(
-        self, omega_wolf: Wolf, fitness_function: Callable[[int], float], a: float
+        self, omega_wolf: "Wolf", fitness_function: Callable[[int], float], a: float
     ) -> list[int]:
         """
         Optimizes a seed set by incorporating neighbor diversity into the selection process.
