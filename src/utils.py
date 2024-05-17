@@ -6,7 +6,11 @@ from src.network import Network
 
 def get_network(n: str) -> Network:
     datasets = {
+        # soc twitter follow with 700k deges
+        # https://nrvis.com/download/data/soc/soc-twitter-follows.zip
         "soc-twitter-follows": "seed/soc-twitter-follows.csv",
+        # soc linkedin dataset with 19M edges
+        # https://nrvis.com/download/data/soc/soc-linkedin.zip
         "soc-linkedin": "seed/soc-linkedin.edges",
     }
 
