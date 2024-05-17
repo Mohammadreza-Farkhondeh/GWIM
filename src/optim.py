@@ -107,7 +107,7 @@ class NeighborsDiversityFitnessMixin:
 
         combined_scores.sort(key=lambda x: x[1], reverse=True)
 
-        new_seed_set = combined_scores[: self.k]
+        new_seed_set = combined_scores[: self.h]
         new_seed_set = [node for node, _ in new_seed_set]
 
         return new_seed_set

@@ -12,11 +12,7 @@ class Network:
 
     def __init__(
         self,
-        *,
-        nodes: list = None,
-        edges: list = None,
         graph: nx.Graph = None,
-        directed: bool = False,
     ) -> None:
         """
         Initializes a Network object.
@@ -25,12 +21,8 @@ class Network:
             directed (bool, optional): Flag indicating whether the network is directed
                 or undirected. Defaults to False (undirected).
         """
-
-        self.directed = directed
-        if graph:
+        if graph is not None:
             self.graph = graph
-        else:
-            self.graph = nx.DiGraph(edges) if directed else nx.Graph(edges)
 
         self.v_prime: list[int] = self.get_v_prime()
         self.v_prime_size = len(self.v_prime)
