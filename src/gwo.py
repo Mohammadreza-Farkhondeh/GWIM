@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 from src.network import Network
@@ -89,6 +91,9 @@ class Wolf:
     def set_fitness_score(self, fitness_score: float):
         self.fitness_score = fitness_score
 
+    def __str__(self):
+        return f"Wolf - {self.seed_set} - fitness={self.fitness_score}"
+
 
 class BaseGWO:
     def __init__(self, n: int):
@@ -132,6 +137,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             n (int): The number of wolves in the GWO population.
             k (int): The size of seed sets for each wolf.
         """
+        logging.debug("Initializing GWIMOptimizer...")
         BaseGWO.__init__(self, n=n)
         NeighborsDiversityFitnessMixin.__init__(self, network, k)
 
@@ -144,6 +150,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         self.omega_wolves: list[Wolf] = None
         self.network = network
 
+        logging.debug(f"Initializing population with n={n} and k={k}.")
         self.initialize_population(n, k)
 
     def generate_random_position(self, k: int) -> tuple[list, list]:
@@ -157,6 +164,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             tuple[list, SeedSet]: A tuple containing the position vector (X_i) and seed set (S_i).
         """
+        logging.log(level=logging.NOTSET, msg="Generating random position vector.")
         degrees = [self.network.graph.degree(node) for node in self.network.v_prime]
         max_degree = max(degrees)
 
@@ -166,6 +174,9 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             X_i.append(r / max_degree)
 
         seed_indices = np.argsort(X_i)[::-1][:k]
+
+        logging.log(level=logging.NOTSET, msg=f"Generated position vector X_i: {X_i}")
+        logging.log(level=logging.NOTSET, msg=f"Selected seed indices: {seed_indices}")
 
         return X_i, seed_indices.tolist()
 
@@ -177,13 +188,14 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             n (int): The number of wolves in the GWO population.
             k (int): The size of seed sets for each wolf.
         """
-
+        logging.debug("Initializing the GWO population.")
         for _ in range(n):
             X_i, seedset = self.generate_random_position(k)
             self.population.append(
                 Wolf(network=self.network, seedset=seedset, k=k, position=X_i)
             )
 
+        logging.debug("Evaluating population fitness.")
         self.evaluate_population_fitness()
 
     def check_and_adjust_index(self, p1: int, p2: int, p3: int, index: int) -> int:
@@ -199,10 +211,12 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             int: The adjusted node index within the network's node range.
         """
-
         nodes = list(self.network.graph.nodes())
         new_value = int(round((p1 + p2 + p3) / 3))
-        return min(max(new_value, 0), len(nodes) - 1)
+        adjusted_index = min(max(new_value, 0), len(nodes) - 1)
+
+        logging.debug(f"Adjusted index from {index} to {adjusted_index}.")
+        return adjusted_index
 
     def get_linear_decay(self, iterations: int, max_iteration: int) -> float:
         """
@@ -232,6 +246,10 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             float: The calculated fitness score of the seed set.
         """
+        logging.log(
+            level=logging.NOTSET,
+            msg=f"Calculating fitness function for seedset: {seedset}",
+        )
 
         network = self.network
         W_S = 0  # Total worthiness of nodes in the seed set
@@ -251,27 +269,40 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             p_j = w_j / W_S  # Proportion of worthiness for node j
             entropy -= p_j * np.log(p_j)
 
+        logging.log(level=logging.NOTSET, msg=f"Calculated fitness score: {entropy}")
         return entropy
 
     def update_wolf_hierarchy(self) -> None:
         """
         Identifies the alpha, beta, and delta wolves based on their fitness scores.
         """
-
+        logging.log(
+            level=logging.NOTSET, msg="Updating wolf hierarchy based on fitness scores."
+        )
         self.population.sort(key=lambda w: w.fitness_score, reverse=True)
         self.alpha_wolf = self.population[0]
         self.beta_wolf = self.population[1]
         self.delta_wolf = self.population[2]
         self.omega_wolves = self.population[3:]
 
+        logging.log(level=logging.NOTSET, msg=f"Alpha wolf: {self.alpha_wolf}")
+        logging.log(level=logging.NOTSET, msg=f"Beta wolf: {self.beta_wolf}")
+        logging.log(level=logging.NOTSET, msg=f"Delta wolf: {self.delta_wolf}")
+
     def evaluate_population_fitness(self) -> None:
         """
         Calculates the fitness score of each wolf in the population using the fitness_function.
         """
-
+        logging.log(
+            level=logging.NOTSET, msg="Evaluating fitness for the entire population."
+        )
         for wolf in self.population:
             fitness_score = self.fitness_function(wolf.seed_set)
             wolf.set_fitness_score(fitness_score=fitness_score)
+            logging.log(
+                level=logging.NOTSET,
+                msg=f"Evaluated fitness for wolf: {wolf} - Score: {fitness_score}",
+            )
 
     def run_gwo(self, max_t: int, optimize: bool = False) -> Wolf:
         """
@@ -283,17 +314,22 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             SeedSet: The final seed set with the highest predicted influence spread.
         """
-
+        logging.debug(f"Running GWO for {max_t} iterations.")
         a = self.get_linear_decay(0, max_t)
         A = [a * (2 * np.random.random() - 1) for _ in range(3)]
         C = [2 * np.random.random() for _ in range(3)]
 
         self.evaluate_population_fitness()
         self.update_wolf_hierarchy()
-
         for t in range(max_t):
+            logging.debug(f"Iteration {t + 1}/{max_t} started.")
+
             # Omega wolves update
             for omega_wolf in self.omega_wolves:
+                logging.log(
+                    level=logging.NOTSET,
+                    msg=f"Updating position for omega wolf: {omega_wolf}",
+                )
                 omega_wolf.update_position(
                     X_alpha=self.alpha_wolf.position,
                     X_beta=self.beta_wolf.position,
@@ -301,29 +337,47 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
                     A=A,
                     C=C,
                 )
+                logging.log(
+                    level=logging.NOTSET,
+                    msg=f"Updating seed set for omega wolf: {omega_wolf}",
+                )
                 omega_wolf.update_seed_set(network=self.network, k=self.k)
+
                 if optimize:
+                    logging.log(
+                        level=logging.NOTSET,
+                        msg=f"Optimizing seed set for omega wolf: {omega_wolf}",
+                    )
                     omega_wolf.seed_set = self.optimize_seed_set(
                         omega_wolf, self.fitness_function, a=0.5
                     )
 
+            logging.debug("Evaluating population fitness after updates.")
             self.evaluate_population_fitness()
+            logging.debug("Updating wolf hierarchy after fitness evaluation.")
             self.update_wolf_hierarchy()
 
-            a = self.get_linear_decay(0, max_t)
+            a = self.get_linear_decay(t, max_t)
             A = [a * (2 * np.random.random() - 1) for _ in range(3)]
             C = [2 * np.random.random() for _ in range(3)]
 
             if self.check_similar_wolves(
                 self.alpha_wolf, self.beta_wolf
             ) or self.check_similar_wolves(self.beta_wolf, self.delta_wolf):
+                logging.warning("Detected similar wolves, generating new positions.")
                 X, S = self.generate_random_position(k=self.k)
                 self.beta_wolf = Wolf(
                     network=self.network, position=X, seedset=S, k=self.k
                 )
+                logging.debug(f"New beta wolf: {self.beta_wolf}")
                 X, S = self.generate_random_position(k=self.k)
                 self.delta_wolf = Wolf(
                     network=self.network, position=X, seedset=S, k=self.k
                 )
+                logging.debug(f"New delta wolf: {self.delta_wolf}")
 
+            logging.debug(f"Iteration {t + 1}/{max_t} completed.")
+
+        logging.debug("GWO run completed.")
+        logging.debug(f"Best seed set found: {self.alpha_wolf.seed_set}")
         return self.alpha_wolf
