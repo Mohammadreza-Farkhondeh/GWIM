@@ -1,5 +1,3 @@
-from typing import Callable
-
 import networkx as nx
 
 from src.network import Network
@@ -76,38 +74,42 @@ class NeighborsDiversityFitnessMixin:
             neighbors.update(self.network.graph.neighbors(node))
         return neighbors
 
-    def optimize_seed_set(
-        self, omega_wolf: "Wolf", fitness_function: Callable[[int], float], a: float
-    ) -> list[int]:
+    def optimize_seed_set(self, omega_wolf: "Wolf") -> list[int]:
         """
         Optimizes a seed set by incorporating neighbor diversity into the selection process.
 
         Args:
-            omega_wolf (object): An object representing the omega wolf (current seed set) in the optimization algorithm.
-            fitness_function (callable[[int], float]): A function that calculates the fitness score of a node.
-            a (float): A weight parameter between 0 and 1 to control the balance between fitness and diversity.
+            omega_wolf (Wolf): An object representing the omega wolf (current seed set) in the optimization algorithm.
 
         Returns:
             list[int]: A new optimized seed set with enhanced diversity.
         """
-        combined_scores = []
-        for node, influence_score in self.influence.items():
-            if node in omega_wolf.seed_set:
-                combined_scores.append((node, fitness_function(node), influence_score))
-
         top_neighbors = self.get_top_neighbors(omega_wolf.seed_set)
-        for neighbor_list in top_neighbors.values():
-            for neighbor in neighbor_list:
-                fitness = fitness_function(neighbor)
-                diversity = self.calculate_diversity(neighbor, omega_wolf.seed_set)
-                combined_score = (
-                    a * fitness + (1 - a) * diversity + self.influence[neighbor]
-                )
-                combined_scores.append((neighbor, combined_score))
+        neighbors = [n for v in top_neighbors.values() for n in v]
+        neighbors_scores = [
+            (
+                node,
+                self.influence[node]
+                * self.calculate_diversity(node, omega_wolf.seed_set),
+            )
+            for node in neighbors
+        ]
+        seed_set_scores = [
+            (
+                node,
+                self.influence[node]
+                * self.calculate_diversity(node, omega_wolf.seed_set),
+            )
+            for node in omega_wolf.seed_set
+        ]
 
-        combined_scores.sort(key=lambda x: x[1], reverse=True)
+        neighbors_scores.sort(key=lambda x: x[1], reverse=True)
+        seed_set_scores.sort(key=lambda x: x[1], reverse=True)
 
-        new_seed_set = combined_scores[: self.h]
-        new_seed_set = [node for node, _ in new_seed_set]
-
+        seed_set_scores[-1] = (
+            neighbors_scores[0]
+            if neighbors_scores[0][1] / 2 > seed_set_scores[-1][1]
+            else seed_set_scores[-1]
+        )
+        new_seed_set = [node for node, _ in seed_set_scores]
         return new_seed_set

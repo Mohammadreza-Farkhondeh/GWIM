@@ -191,9 +191,6 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
                 Wolf(network=self.network, seedset=seedset, k=k, position=X_i)
             )
 
-        logging.debug("Evaluating population fitness.")
-        self.evaluate_population_fitness()
-
     def check_and_adjust_index(self, p1: int, p2: int, p3: int, index: int) -> int:
         """
         Ensures the updated node index stays within the valid range of the network's nodes.
@@ -244,8 +241,8 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         """
         network = self.network
         W_S = 0  # Total worthiness of nodes in the seed set
-        # seedset = seedset if isinstance(seedset, list) else [seedset]
-        for node in list(seedset):
+        print(seedset)
+        for node in seedset:
             # Calculate node worthiness (w(v_j))
             w_j = network.graph.degree(node) * len(
                 list(network.graph.neighbors(node))
@@ -260,9 +257,6 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             p_j = w_j / W_S  # Proportion of worthiness for node j
             entropy -= p_j * np.log(p_j)
 
-        logging.log(
-            level=1, msg=f"Calculated fitness score for seedset: {seedset}: {entropy}"
-        )
         return entropy
 
     def update_wolf_hierarchy(self) -> None:
@@ -290,7 +284,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             wolf.set_fitness_score(fitness_score=fitness_score)
             logging.log(
                 level=1,
-                msg=f"Evaluated fitness for wolf: {wolf} - Score: {fitness_score}",
+                msg=f"Evaluated fitness for wolf: {wolf}",
             )
 
     def run_gwo(self, max_t: int, optimize: bool = False) -> Wolf:
@@ -317,7 +311,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             for omega_wolf in self.omega_wolves:
                 logging.log(
                     level=1,
-                    msg=f"Updating position for omega wolf: {omega_wolf}",
+                    msg=f"Updating position and seedset for omega wolf: {omega_wolf}",
                 )
                 omega_wolf.update_position(
                     X_alpha=self.alpha_wolf.position,
@@ -326,20 +320,22 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
                     A=A,
                     C=C,
                 )
+                omega_wolf.update_seed_set(network=self.network, k=self.k)
                 logging.log(
                     level=1,
-                    msg=f"Updating seed set for omega wolf: {omega_wolf}",
+                    msg=f"Got position: {omega_wolf.position[:3]}... - seedset {omega_wolf.seed_set[:3]}...",
                 )
-                omega_wolf.update_seed_set(network=self.network, k=self.k)
-
                 if optimize:
                     logging.log(
                         level=1,
                         msg=f"Optimizing seed set for omega wolf: {omega_wolf}",
                     )
-                    omega_wolf.seed_set = self.optimize_seed_set(
-                        omega_wolf, self.fitness_function, a=0.5
+                    optimized_seed_set = self.optimize_seed_set(omega_wolf)
+                    logging.log(
+                        level=1,
+                        msg=f"Had {omega_wolf.seed_set[:3]}, got {optimized_seed_set[:3]}",
                     )
+                    omega_wolf.seed_set = optimized_seed_set
 
             logging.log(level=1, msg="Evaluating population fitness after updates.")
             self.evaluate_population_fitness()
