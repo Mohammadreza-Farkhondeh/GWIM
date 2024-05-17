@@ -159,19 +159,20 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             tuple[list, SeedSet]: A tuple containing the position vector (X_i) and seed set (S_i).
         """
-        logging.log(level=logging.NOTSET, msg="Generating random position vector.")
-        degrees = [self.network.graph.degree(node) for node in self.network.v_prime]
-        max_degree = max(degrees)
+        max_degree = max(self.network.graph.degree, key=lambda x: x[1])[1]
 
         X_i = []
-        for j in range(len(self.network.v_prime)):
-            r = np.random.random() * degrees[j]
+        for j in self.network.v_prime:
+            r = np.random.random() * self.network.graph.degree(j)
             X_i.append(r / max_degree)
 
-        seed_indices = np.argsort(X_i)[::-1][:k]
+        seed_indices = np.argsort(X_i)[::-1][:k] + 1
 
-        logging.log(level=logging.NOTSET, msg=f"Generated position vector X_i: {X_i}")
-        logging.log(level=logging.NOTSET, msg=f"Selected seed indices: {seed_indices}")
+        logging.log(
+            level=1,
+            msg=f"Generated random position vector. X_i: {X_i[:3]}..."
+            + f"And selected seed indices: {seed_indices[:3]}...",
+        )
 
         return X_i, seed_indices.tolist()
 
@@ -241,14 +242,9 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         Returns:
             float: The calculated fitness score of the seed set.
         """
-        logging.log(
-            level=logging.NOTSET,
-            msg=f"Calculating fitness function for seedset: {seedset}",
-        )
-
         network = self.network
         W_S = 0  # Total worthiness of nodes in the seed set
-        seedset = seedset if isinstance(seedset, list) else [seedset]
+        # seedset = seedset if isinstance(seedset, list) else [seedset]
         for node in list(seedset):
             # Calculate node worthiness (w(v_j))
             w_j = network.graph.degree(node) * len(
@@ -264,38 +260,36 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             p_j = w_j / W_S  # Proportion of worthiness for node j
             entropy -= p_j * np.log(p_j)
 
-        logging.log(level=logging.NOTSET, msg=f"Calculated fitness score: {entropy}")
+        logging.log(
+            level=1, msg=f"Calculated fitness score for seedset: {seedset}: {entropy}"
+        )
         return entropy
 
     def update_wolf_hierarchy(self) -> None:
         """
         Identifies the alpha, beta, and delta wolves based on their fitness scores.
         """
-        logging.log(
-            level=logging.NOTSET, msg="Updating wolf hierarchy based on fitness scores."
-        )
+        logging.log(level=1, msg="Updating wolf hierarchy based on fitness scores.")
         self.population.sort(key=lambda w: w._fitness_score, reverse=True)
         self.alpha_wolf = self.population[0]
         self.beta_wolf = self.population[1]
         self.delta_wolf = self.population[2]
         self.omega_wolves = self.population[3:]
 
-        logging.log(level=logging.NOTSET, msg=f"Alpha wolf: {self.alpha_wolf}")
-        logging.log(level=logging.NOTSET, msg=f"Beta wolf: {self.beta_wolf}")
-        logging.log(level=logging.NOTSET, msg=f"Delta wolf: {self.delta_wolf}")
+        logging.log(level=1, msg=f"Alpha wolf: {self.alpha_wolf}")
+        logging.log(level=1, msg=f"Beta wolf: {self.beta_wolf}")
+        logging.log(level=1, msg=f"Delta wolf: {self.delta_wolf}")
 
     def evaluate_population_fitness(self) -> None:
         """
         Calculates the fitness score of each wolf in the population using the fitness_function.
         """
-        logging.log(
-            level=logging.NOTSET, msg="Evaluating fitness for the entire population."
-        )
+        logging.log(level=1, msg="Evaluating fitness for the entire population.")
         for wolf in self.population:
             fitness_score = self.fitness_function(wolf.seed_set)
             wolf.set_fitness_score(fitness_score=fitness_score)
             logging.log(
-                level=logging.NOTSET,
+                level=1,
                 msg=f"Evaluated fitness for wolf: {wolf} - Score: {fitness_score}",
             )
 
@@ -322,7 +316,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
             # Omega wolves update
             for omega_wolf in self.omega_wolves:
                 logging.log(
-                    level=logging.NOTSET,
+                    level=1,
                     msg=f"Updating position for omega wolf: {omega_wolf}",
                 )
                 omega_wolf.update_position(
@@ -333,23 +327,25 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
                     C=C,
                 )
                 logging.log(
-                    level=logging.NOTSET,
+                    level=1,
                     msg=f"Updating seed set for omega wolf: {omega_wolf}",
                 )
                 omega_wolf.update_seed_set(network=self.network, k=self.k)
 
                 if optimize:
                     logging.log(
-                        level=logging.NOTSET,
+                        level=1,
                         msg=f"Optimizing seed set for omega wolf: {omega_wolf}",
                     )
                     omega_wolf.seed_set = self.optimize_seed_set(
                         omega_wolf, self.fitness_function, a=0.5
                     )
 
-            logging.debug("Evaluating population fitness after updates.")
+            logging.log(level=1, msg="Evaluating population fitness after updates.")
             self.evaluate_population_fitness()
-            logging.debug("Updating wolf hierarchy after fitness evaluation.")
+            logging.log(
+                level=1, msg="Updating wolf hierarchy after fitness evaluation."
+            )
             self.update_wolf_hierarchy()
 
             a = self.get_linear_decay(t, max_t)
@@ -372,6 +368,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
                 logging.debug(f"New delta wolf: {self.delta_wolf}")
 
             logging.debug(f"Iteration {t + 1}/{max_t} completed.")
+            logging.debug(f"Alpha Wolf: {self.alpha_wolf}")
 
         logging.debug("GWO run completed.")
         logging.debug(f"Best seed set found: {self.alpha_wolf.seed_set}")
