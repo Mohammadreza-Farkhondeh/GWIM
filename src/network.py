@@ -33,6 +33,7 @@ class Network:
             self.graph = nx.DiGraph(edges) if directed else nx.Graph(edges)
 
         self.v_prime: list[int] = self.get_v_prime()
+        self.v_prime_size = len(self.v_prime)
 
     def add_node(self, node: int) -> None:
         """

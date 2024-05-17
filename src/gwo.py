@@ -33,15 +33,14 @@ class Wolf:
             seedset (list[int], optional): Initial seed set (default: []).
             position (list[float], optional): Initial position vector (default: []).
         """
-
-        self.v_prime = network.get_v_prime()
+        self.v_prime_size = network.v_prime_size
         self.position = (
-            position if position else [0.0] * self.v_prime
+            position if position else [0.0] * self.v_prime_size
         )  # Initialize with zero probabilities
 
         self.seed_set = seedset
-        self.update_seed_set(network, k) if seedset else None
-        self.fitness_score: float = None
+        self.update_seed_set(network, k) if not seedset else None
+        self._fitness_score: float = 0
 
     def update_position(
         self, X_alpha: list, X_beta: list, X_delta: list, A: list, C: list
@@ -78,21 +77,17 @@ class Wolf:
             network (Network): The network object.
             k (int): The size of the seed set.
         """
-
-        v_prime = self.v_prime
-        sorted_nodes = sorted(
-            set(network.get_nodes()).intersection(v_prime),
-            # TODO TODO TODO TODO TODO: FIX sorting key
-            key=lambda x: self.position[1],
-            reverse=True,
-        )
-        self.seed_set = sorted_nodes[:k]
+        node_probs = [
+            (node, prob) for node, prob in zip(network.v_prime, self.position)
+        ]
+        sorted_nodes = sorted(node_probs, key=lambda x: x[1], reverse=True)
+        self.seed_set = [node for node, _ in sorted_nodes[:k]]
 
     def set_fitness_score(self, fitness_score: float):
-        self.fitness_score = fitness_score
+        self._fitness_score = fitness_score
 
     def __str__(self):
-        return f"Wolf - {self.seed_set} - fitness={self.fitness_score}"
+        return f"Wolf - {self.seed_set} - fitness={self._fitness_score}"
 
 
 class BaseGWO:
@@ -279,7 +274,7 @@ class GWIMOptimizer(BaseGWO, NeighborsDiversityFitnessMixin):
         logging.log(
             level=logging.NOTSET, msg="Updating wolf hierarchy based on fitness scores."
         )
-        self.population.sort(key=lambda w: w.fitness_score, reverse=True)
+        self.population.sort(key=lambda w: w._fitness_score, reverse=True)
         self.alpha_wolf = self.population[0]
         self.beta_wolf = self.population[1]
         self.delta_wolf = self.population[2]
