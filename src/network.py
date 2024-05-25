@@ -1,90 +1,65 @@
 import networkx as nx
+import numpy as np
+
+np.seterr(all="ignore")
 
 
 class Network:
-    """
-    Represents a social network as a graph using NetworkX.
-
-    Attributes:
-        directed (bool): Flag indicating whether the network is directed or undirected.
-        graph (networkx.Graph or networkx.DiGraph): The underlying NetworkX graph object.
-    """
-
     def __init__(
         self,
         graph: nx.Graph = None,
     ) -> None:
-        """
-        Initializes a Network object.
-
-        Args:
-            directed (bool, optional): Flag indicating whether the network is directed
-                or undirected. Defaults to False (undirected).
-        """
         if graph is not None:
             self.graph = graph
 
         self.v_prime: list[int] = self.get_v_prime()
         self.v_prime_size = len(self.v_prime)
 
-    def add_node(self, node: int) -> None:
-        """
-        Adds a node to the network.
+    def evaluate_fitness(self, seed_set):
+        worthiness = {
+            node: self.calculate_worthiness(node, seed_set) for node in seed_set
+        }
+        total_worthiness = sum(worthiness.values())
+        if total_worthiness == 0:
+            return 0
+        entropy = -sum(
+            (worthiness[node] / total_worthiness)
+            * np.log(worthiness[node] / total_worthiness)
+            for node in worthiness
+        )
+        return entropy
 
-        Args:
-            node (Node): The node object to be added to the network.
-        """
+    def calculate_worthiness(self, node, seed_set):
+        propagation_probability = self.calculate_propagation_probability(node, seed_set)
+        degree = self.graph.degree(node)
+        return propagation_probability * degree
 
-        self.graph.add_node(node, node=node)
+    def calculate_propagation_probability(self, node, seed_set):
+        neighbors_in_seed = set(self.graph.neighbors(node)) & seed_set
+        second_order_neighbors = (
+            set(
+                neigh
+                for neighbor in neighbors_in_seed
+                for neigh in self.graph.neighbors(neighbor)
+            )
+            - seed_set
+        )
 
-    def add_edge(self, source: int, target: int) -> None:
-        """
-        Adds an edge between two nodes in the network.
+        propagation_probability = 0
 
-        Args:
-            source (int): The source node id of the edge.
-            target (int): The target node id of the edge.
-        """
+        # Calculate probability from direct neighbors
+        for neighbor in neighbors_in_seed:
+            propagation_probability += 1
 
-        self.graph.add_edge(source, target)
+        # Calculate probability from second-order neighbors
+        for neigh1 in second_order_neighbors:
+            for neigh2 in set(self.graph.neighbors(neigh1)) & seed_set:
+                propagation_probability += 1
 
-    def get_nodes(self) -> list[int]:
-        """
-        Returns a list of all nodes in the network.
-
-        Returns:
-            list[int]: A list containing all Node ids in the network.
-        """
-        return self.graph.nodes()
+        return propagation_probability
 
     def get_v_prime(self):
-        """
-        Returns the nodes with degree greater than 1 (V').
-
-        Args:
-            network (Network): The network object.
-
-        Returns:
-            int: The number of nodes with degree greater than 1 (V').
-        """
         return [node for node, degree in self.graph.degree if degree > 1]
 
-    def __str__(self) -> str:
-        """
-        Returns a string representation of the network summary.
-
-        Returns:
-            str: A string summarizing the network size (number of nodes and edges).
-        """
-
-        return f"Network: {len(self.graph.nodes)} nodes, {len(self.graph.edges)} edges"
-
-    def __repr__(self) -> str:
-        """
-        Returns a string representation of the network for debugging purposes.
-
-        Returns:
-            str: A string representation similar to the __str__ method.
-        """
-
-        return f"Network: {len(self.graph.nodes)} nodes, {len(self.graph.edges)} edges"
+    def get_neighbors(self, node):
+        return self.graph.neighbors(node)

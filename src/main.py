@@ -1,34 +1,36 @@
-import logging
-
 from src.gwo import GWIMOptimizer
 from src.network import Network
+from src.optim import optimize_seed_set_based_on_neighbors
 from src.utils import get_network
 
-logging.basicConfig(
-    level=logging.NOTSET, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
-logging.info("Script started.")
+print("Script started.")
 
 try:
-    n = "watts"
-    logging.info(f"Attempting to get the {n} network...")
+    n = "erdoss"
+    print(f"Attempting to get the {n} network...")
     network: Network = get_network(n=n)
-    logging.info(f"Network obtained successfully: {network}")
+    print(f"Network obtained successfully: {network}")
 except Exception as e:
-    logging.error(f"Error getting network: {e}")
+    print(f"Error getting network: {e}")
     exit(1)
 
-n = 20  # Number of wolves in the population
-k = 3  # Desired seed set size (number of nodes in the seed set)
-max_t = 3  # Maximum number of iterations
-optimize = True  # Optimize using the NeighborsDiversityFitnessMixin optimizer
+population_size = 5
+seed_set_size = 5
+max_iter = 3
+optimizer = optimize_seed_set_based_on_neighbors
 
-logging.info(
-    f"Initializing the optimizer with n={n}, k={k}, max_t={max_t}, optimize={optimize}"
+print(
+    f"Initializing the optimizer with population_size={population_size}, seed_set_size={seed_set_size}, max_iter={max_iter} with optimzer {optimizer}"
 )
-optimizer = GWIMOptimizer(network, n, k)
+optimizer = GWIMOptimizer(
+    network=network,
+    population_size=population_size,
+    seed_set_size=5,
+    max_iter=max_iter,
+    seedset_optimizer=optimizer,
+)
 
-logging.info("Starting the optimization algorithm...")
-best_wolf = optimizer.run_gwo(max_t, optimize=optimize)
-logging.info(f"Optimization complete. Best seed set: {best_wolf.seed_set}")
+print("Starting the optimization algorithm...")
+best_wolf = optimizer.run_gwo()
+
+print(f"Optimization complete. Best seed set: {best_wolf}")

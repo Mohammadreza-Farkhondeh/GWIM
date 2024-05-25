@@ -6,7 +6,10 @@ from src.network import Network
 
 def get_network(n: str) -> Network:
     datasets = {
-        # soc twitter follow with 700k deges
+        # email Enron dataset with 36k edges
+        # https://snap.stanford.edu/data/email-Enron.txt.gz
+        "enron": "seed/enron.csv",
+        # soc twitter follow with 700k edges
         # https://nrvis.com/download/data/soc/soc-twitter-follows.zip
         "soc-twitter-follows": "seed/soc-twitter-follows.csv",
         # soc linkedin dataset with 19M edges
@@ -33,6 +36,9 @@ def get_network(n: str) -> Network:
     elif n == "watts":
         graph = nx.watts_strogatz_graph(100, 5, 0.33)
         network = Network(graph=graph)
+    elif n == "erdos":
+        graph = nx.erdos_renyi_graph(100, 0.05)
+        network = Network(graph=graph)
     else:
         nodes = list(range(1, 17))
         edges = [
@@ -53,10 +59,8 @@ def get_network(n: str) -> Network:
             (7, 9),
             (7, 10),
             (7, 11),
-            (8, 9),
             (8, 10),
             (9, 10),
-            (10, 11),
             (10, 12),
             (12, 13),
             (12, 14),
