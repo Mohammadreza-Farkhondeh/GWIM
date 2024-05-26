@@ -8,7 +8,7 @@ from src.network import Network
 
 def get_network(n: str) -> Network:
     datasets = {
-        # email Enron dataset with 36k edges
+        # email Enron dataset with 360k edges
         # https://snap.stanford.edu/data/email-Enron.txt.gz
         "enron": "seed/enron.csv",
         # soc twitter follow with 700k edges
@@ -39,10 +39,9 @@ def get_network(n: str) -> Network:
         graph = nx.watts_strogatz_graph(100, 5, 0.33)
         network = Network(graph=graph)
     elif n == "erdos":
-        graph = nx.erdos_renyi_graph(100, 0.05)
+        graph = nx.erdos_renyi_graph(100, 0.025)
         network = Network(graph=graph)
     else:
-        nodes = list(range(1, 17))
         edges = [
             (1, 2),
             (1, 3),
@@ -74,7 +73,6 @@ def get_network(n: str) -> Network:
             (15, 16),
         ]
         graph = nx.Graph()
-        graph.add_nodes_from(nodes)
         graph.add_edges_from(edges)
         return Network(graph=graph)
 
