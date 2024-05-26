@@ -17,6 +17,12 @@ def get_network(n: str) -> Network:
         # soc linkedin dataset with 19M edges
         # https://nrvis.com/download/data/soc/soc-linkedin.zip
         "soc-linkedin": "seed/soc-linkedin.edges",
+        # congress twitter dataset with 13k edges
+        # https://snap.stanford.edu/data/congress_network.zip
+        "congress": "seed/congress.edgelist",
+        # hamsterster dataset with 17k edges
+        # https://nrvis.com/download/data/soc/soc-hamsterster.zip
+        "hamsterster": "seed/soc-hamsterster.edges",
     }
 
     if n in datasets:

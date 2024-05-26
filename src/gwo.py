@@ -76,11 +76,9 @@ class GWIMOptimizer:
         self.seed_set_size = seed_set_size
         self.max_iter = max_iter
         self.seedset_optimizer = seedset_optimizer
-        print(1)
         self.population: list = [
             Wolf(network, seed_set_size) for _ in range(population_size)
         ]
-        print(2)
         self.alpha, self.beta, self.delta = self.get_leaders()
         logging.debug(
             f"Initialized GWIMOptimizer with alpha: {self.alpha.seed_set}, beta: {self.beta.seed_set}, delta: {self.delta.seed_set}"

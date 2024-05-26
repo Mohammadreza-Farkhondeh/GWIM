@@ -16,7 +16,7 @@ logging.basicConfig(
 logging.info("Script started.")
 
 try:
-    n = "soc-twitter-follows"
+    n = "hamsterster"
     logging.info(f"Attempting to get the {n} network...")
     network: Network = get_network(n=n)
     logging.info(
@@ -26,9 +26,9 @@ except Exception as e:
     logging.error(f"Error getting network: {e}")
     exit(1)
 
-population_size = 20
-seed_set_size = 3
-max_iter = 25
+population_size = 10
+seed_set_size = 4
+max_iter = 20
 optimize = False
 seedset_optimizer_func = optimize_seed_set_based_on_neighbors if optimize else None
 
