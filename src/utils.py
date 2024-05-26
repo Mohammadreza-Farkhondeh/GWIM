@@ -1,3 +1,5 @@
+from itertools import combinations
+
 import networkx as nx
 import pandas as pd
 
@@ -77,3 +79,16 @@ def get_network(n: str) -> Network:
         return Network(graph=graph)
 
     return network
+
+
+def test_all_seed_sets(network):
+    nodes = network.v_prime
+    all_combinations = list(combinations(nodes, 3))
+
+    fitness_results = []
+
+    for seed_set in all_combinations:
+        fitness = network.evaluate_fitness(set(seed_set))
+        fitness_results.append((seed_set, fitness))
+
+    return fitness_results

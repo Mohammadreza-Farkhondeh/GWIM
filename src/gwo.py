@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 
@@ -38,6 +40,7 @@ class Wolf:
             new_seed_set = seedset_optimizer(self.network, self.seed_set)
             if new_seed_set != self.seed_set:
                 self.seed_set = new_seed_set
+                self.fitness = self.evaluate_fitness()
 
 
 class GWIMOptimizer:
@@ -51,6 +54,9 @@ class GWIMOptimizer:
         self.seedset_optimizer = seedset_optimizer
         self.population = [Wolf(network, seed_set_size) for _ in range(population_size)]
         self.alpha, self.beta, self.delta = self.get_leaders()
+        logging.debug(
+            f"Initialized GWIMOptimizer with alpha: {self.alpha.seed_set}, beta: {self.beta.seed_set}, delta: {self.delta.seed_set}"
+        )
 
     def get_leaders(self):
         sorted_population = sorted(
@@ -60,14 +66,17 @@ class GWIMOptimizer:
 
     def run_gwo(self):
         a = 2
-        for _ in range(self.max_iter):
-            print(
-                f"iter {_}, alpha wolf {self.alpha.seed_set}, fitness: {self.alpha.fitness:.3f}"
+        for iter_num in range(self.max_iter):
+            logging.debug(
+                f"Iteration {iter_num}, alpha wolf: {self.alpha.seed_set}, fitness: {self.alpha.fitness:.3f}"
             )
             for wolf in self.population:
                 wolf.update_position(
                     self.alpha, self.beta, self.delta, a, self.seedset_optimizer
                 )
             self.alpha, self.beta, self.delta = self.get_leaders()
+            logging.debug(
+                f"New alpha wolf: {self.alpha.seed_set}, fitness: {self.alpha.fitness:.3f}"
+            )
             a -= 2 / self.max_iter
         return self.alpha.seed_set
