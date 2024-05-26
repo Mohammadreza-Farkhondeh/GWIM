@@ -16,25 +16,25 @@ try:
     network: Network = get_network(n=n)
     logging.info(f"Network obtained successfully: {network}")
 except Exception as e:
-    logging.info(f"Error getting network: {e}")
+    logging.error(f"Error getting network: {e}")
     exit(1)
 
 population_size = 15
 seed_set_size = 3
 max_iter = 10
 optimize = False
-optimizer = optimize_seed_set_based_on_neighbors if optimize else None
+optimizer_func = optimize_seed_set_based_on_neighbors if optimize else None
 
 logging.info(
-    f"Initializing the optimizer with population_size={population_size}, \
-    seed_set_size={seed_set_size}, max_iter={max_iter} with optimzer {optimizer}"
+    f"Initializing the optimizer with population_size={population_size}, "
+    f"seed_set_size={seed_set_size}, max_iter={max_iter} with optimizer {optimizer_func}"
 )
 optimizer = GWIMOptimizer(
     network=network,
     population_size=population_size,
     seed_set_size=seed_set_size,
     max_iter=max_iter,
-    seedset_optimizer=optimizer,
+    seedset_optimizer=optimizer_func,
 )
 
 logging.info("Starting the optimization algorithm...")
