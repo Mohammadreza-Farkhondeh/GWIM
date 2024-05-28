@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Callable, Optional, Tuple
 
 import numpy as np
@@ -90,19 +91,47 @@ class GWIMOptimizer:
         )
         return sorted_population[0], sorted_population[1], sorted_population[2]
 
-    def run_gwo(self) -> np.ndarray:
-        a = 2.0
-        for iter_num in range(self.max_iter):
-            logging.debug(
-                f"Iteration {iter_num}, alpha wolf: {self.alpha.seed_set}, fitness: {self.alpha.fitness:.3f}"
+
+def run_gwo_with_optimizer(
+    network: Network,
+    optimizer: Callable,
+    population_size,
+    seed_set_size,
+    max_iter,
+) -> list[list]:
+    logging.info(f"Running GWO with seedset optimizer {optimizer.__name__}")
+    gwim_optimizer = GWIMOptimizer(
+        network=network,
+        population_size=population_size,
+        seed_set_size=seed_set_size,
+        max_iter=max_iter,
+        seedset_optimizer=optimizer,
+    )
+
+    alpha_fitness_over_time = []
+    fitness_time = []
+    start_time = time.time()
+    a = 2.0
+    for iter_num in range(gwim_optimizer.max_iter):
+        logging.debug(
+            f"Iteration {iter_num}, alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
+        )
+        for wolf in gwim_optimizer.population:
+            wolf.update_position(
+                gwim_optimizer.alpha,
+                gwim_optimizer.beta,
+                gwim_optimizer.delta,
+                a,
+                gwim_optimizer.seedset_optimizer,
             )
-            for wolf in self.population:
-                wolf.update_position(
-                    self.alpha, self.beta, self.delta, a, self.seedset_optimizer
-                )
-            self.alpha, self.beta, self.delta = self.get_leaders()
-            logging.debug(
-                f"New alpha wolf: {self.alpha.seed_set}, fitness: {self.alpha.fitness:.3f}"
-            )
-            a -= 2 / self.max_iter
-        return self.alpha.seed_set
+        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
+            gwim_optimizer.get_leaders()
+        )
+        alpha_fitness_over_time.append(gwim_optimizer.alpha.fitness)
+        fitness_time.append(time.time() - start_time)
+        a -= 2 / gwim_optimizer.max_iter
+        logging.debug(
+            f"New alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
+        )
+
+    return [alpha_fitness_over_time, fitness_time]

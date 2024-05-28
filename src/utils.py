@@ -2,6 +2,7 @@ from itertools import combinations
 
 import networkx as nx
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from src.network import Network
 
@@ -96,3 +97,28 @@ def test_all_seed_sets(network):
         fitness_results.append((seed_set, fitness))
 
     return fitness_results
+
+
+def plot_comparison(results):
+    num_optimizers = len(results)
+    fig, axs = plt.subplots(
+        1, num_optimizers, figsize=(num_optimizers * 6, 6), sharey=True
+    )
+
+    for i, (label, result) in enumerate(results.items()):
+        iterations = range(1, len(result[1]) + 1)
+        axs[i].plot(iterations, result[0], label="Alpha Fitness")
+        axs[i].set_xlabel("Time / Iteration Number")
+        axs[i].set_title(f"Alpha Fitness vs. Time/Iteration for {label}")
+        axs[i].grid(True)
+
+        ax2 = axs[i].twiny()
+        ax2.plot(result[1], result[0], alpha=0)
+        ax2.set_xlim(result[1][0], result[1][-1])
+        ax2.set_xlabel("Time")
+
+    axs[0].set_ylabel("Alpha Fitness")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("results.jpg")
+    plt.show()
