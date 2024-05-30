@@ -8,6 +8,101 @@ def no_optimization(network: Network, seed_set: np.ndarray) -> np.ndarray:
     return seed_set
 
 
+def replace_with_higher_degree_neighbor(
+    network: Network, seed_set: np.ndarray
+) -> np.ndarray:
+    new_seed_set = seed_set.copy()
+
+    for i, node in enumerate(seed_set):
+        neighbors = network.get_neighbors(node)
+        node_degree = network.get_degree(node)
+
+        max_degree_neighbor = max(neighbors, key=lambda n: network.get_degree(n))
+
+        if node_degree > network.get_degree(max_degree_neighbor):
+            max_degree_nodes = [
+                n
+                for n in neighbors
+                if network.get_degree(n) == network.get_degree(max_degree_neighbor)
+            ]
+
+            max_sum_neighbors_degrees = 0
+            max_degree_node = None
+            for neighbor in max_degree_nodes:
+                neighbors_of_neighbor = network.get_neighbors(neighbor)
+                neighbors_degree_sum = sum(
+                    network.get_degree(n) for n in neighbors_of_neighbor
+                )
+
+                if neighbors_degree_sum > max_sum_neighbors_degrees:
+                    max_sum_neighbors_degrees = neighbors_degree_sum
+                    max_degree_node = neighbor
+
+            new_seed_set[i] = max_degree_node
+
+    return new_seed_set
+
+
+def fit_in_higher_degree_neighbor(network: Network, seed_set: np.ndarray) -> np.ndarray:
+    optimized_seed_set = seed_set.copy()
+
+    for i, node in enumerate(seed_set):
+        neighbors = network.get_neighbors(node)
+
+        best_neighbor = node
+        best_influence = network.evaluate_fitness(optimized_seed_set)
+
+        for neighbor in neighbors:
+            if neighbor not in optimized_seed_set:
+                temp_seed_set = optimized_seed_set.copy()
+                temp_seed_set[i] = neighbor
+
+                temp_influence = network.evaluate_fitness(temp_seed_set)
+
+                if temp_influence > best_influence:
+                    best_neighbor = neighbor
+                    best_influence = temp_influence
+
+        optimized_seed_set[i] = best_neighbor
+
+    return optimized_seed_set
+
+
+def diverse_higher_central_neighbor(
+    network: Network, seed_set: np.ndarray, diversity_factor=0.1
+) -> np.ndarray:
+    optimized_seed_set = seed_set.copy()
+
+    for i, node in enumerate(seed_set):
+        neighbors = network.get_neighbors(node)
+        best_neighbor = node
+        best_heuristic = combined_heuristic(network, node)
+
+        for neighbor in neighbors:
+            if neighbor not in optimized_seed_set:
+                heuristic_value = combined_heuristic(network, neighbor)
+
+                if (
+                    heuristic_value > best_heuristic
+                    or np.random.random() < diversity_factor
+                ):
+                    best_neighbor = neighbor
+                    best_heuristic = heuristic_value
+
+        optimized_seed_set[i] = best_neighbor
+
+    return optimized_seed_set
+
+
+def combined_heuristic(network: Network, node: int) -> float:
+    degree = network.get_degree(node)
+    clustering_coefficient = nx.clustering(network.graph, node)
+    return degree + clustering_coefficient
+
+
+#######################################################################
+
+
 def random_perturbation_optimizer(
     network: Network, seed_set: np.ndarray, perturbation_rate: float = 0.1
 ) -> np.ndarray:
@@ -96,81 +191,3 @@ def simulated_annealing_optimizer(
         temp *= cooling_rate
 
     return best_seed_set
-
-
-def replace_with_higher_degree_neighbor(
-    network: Network, seed_set: np.ndarray
-) -> np.ndarray:
-    new_seed_set = seed_set.copy()
-
-    for i, node in enumerate(seed_set):
-        neighbors = network.get_neighbors(node)
-        best_neighbor = node
-        best_degree = network.get_degree(node)
-
-        for neighbor in neighbors:
-            neighbor_degree = network.get_degree(neighbor)
-            if neighbor_degree > best_degree and neighbor not in seed_set:
-                best_neighbor = neighbor
-                best_degree = neighbor_degree
-
-        new_seed_set[i] = best_neighbor
-
-    return new_seed_set
-
-
-def replace_with_neighbor(network: Network, seed_set: np.ndarray) -> np.ndarray:
-    optimized_seed_set = seed_set.copy()
-
-    for i, node in enumerate(seed_set):
-        neighbors = network.get_neighbors(node)
-
-        best_neighbor = node
-        best_influence = network.evaluate_fitness(optimized_seed_set)
-
-        for neighbor in neighbors:
-            if neighbor not in optimized_seed_set:
-                temp_seed_set = optimized_seed_set.copy()
-                temp_seed_set[i] = neighbor
-
-                temp_influence = network.evaluate_fitness(temp_seed_set)
-
-                if temp_influence > best_influence:
-                    best_neighbor = neighbor
-                    best_influence = temp_influence
-
-        optimized_seed_set[i] = best_neighbor
-
-    return optimized_seed_set
-
-
-def optimize_with_diversity_and_centrality(
-    network: Network, seed_set: np.ndarray, diversity_factor=0.1
-) -> np.ndarray:
-    optimized_seed_set = seed_set.copy()
-
-    for i, node in enumerate(seed_set):
-        neighbors = network.get_neighbors(node)
-        best_neighbor = node
-        best_heuristic = combined_heuristic(network, node)
-
-        for neighbor in neighbors:
-            if neighbor not in optimized_seed_set:
-                heuristic_value = combined_heuristic(network, neighbor)
-
-                if (
-                    heuristic_value > best_heuristic
-                    or np.random.random() < diversity_factor
-                ):
-                    best_neighbor = neighbor
-                    best_heuristic = heuristic_value
-
-        optimized_seed_set[i] = best_neighbor
-
-    return optimized_seed_set
-
-
-def combined_heuristic(network: Network, node: int) -> float:
-    degree = network.get_degree(node)
-    clustering_coefficient = nx.clustering(network.graph, node)
-    return degree + clustering_coefficient

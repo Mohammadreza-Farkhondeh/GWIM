@@ -18,7 +18,7 @@ class Wolf:
         return np.array(
             [
                 np.random.random()
-                * int(self.network.get_degree(j))
+                * self.network.get_degree(j)
                 / self.network.max_degree
                 for j in self.network.v_prime
             ]
@@ -99,7 +99,9 @@ def run_gwo_with_optimizer(
     seed_set_size,
     max_iter,
 ) -> list[list]:
-    logging.info(f"Running GWO with seedset optimizer {optimizer.__name__}")
+    logging.info(
+        f"Running GWO with seedset optimizer {optimizer.__name__} for network {network.name}."
+    )
     gwim_optimizer = GWIMOptimizer(
         network=network,
         population_size=population_size,

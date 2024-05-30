@@ -24,13 +24,16 @@ def get_network(n: str) -> Network:
         # hamsterster dataset with 17k edges
         # https://nrvis.com/download/data/soc/soc-hamsterster.zip
         "hamsterster": "seed/soc-hamsterster.edges",
+        # pages food dataet with 2K edges
+        # https://nrvis.com/download/data/soc/fb-pages-food.zip
+        "food": "seed/fb-pages-foods.edges",
     }
 
     if n in datasets:
         try:
             edgelist_df = pd.read_csv(datasets[n], sep=" ")
             graph = nx.from_pandas_edgelist(edgelist_df)
-            network = Network(graph=graph)
+            network = Network(graph=graph, name=n)
         except FileNotFoundError:
             print(f"The file for {n} dataset was not found.")
         except pd.errors.EmptyDataError:
@@ -99,7 +102,7 @@ def test_all_seed_sets(network):
     return fitness_results
 
 
-def plot_comparison(results):
+def plot_comparison(results, imname):
     num_optimizers = len(results)
     fig, axs = plt.subplots(
         1, num_optimizers, figsize=(num_optimizers * 6, 6), sharey=True
@@ -118,7 +121,5 @@ def plot_comparison(results):
         ax2.set_xlabel("Time")
 
     axs[0].set_ylabel("Alpha Fitness")
-    plt.legend()
     plt.tight_layout()
-    plt.savefig("results.jpg")
-    plt.show()
+    plt.savefig(f"{imname}.jpg")

@@ -5,8 +5,9 @@ import numpy as np
 
 
 class Network:
-    def __init__(self, graph: Optional[nx.Graph] = None) -> None:
+    def __init__(self, graph: Optional[nx.Graph] = None, name: str = "") -> None:
         self.graph = graph if graph is not None else nx.Graph()
+        self.name = name
         self.v_prime: np.ndarray = self.get_v_prime()
         self.v_prime_size: int = len(self.v_prime)
         self.max_degree: int = np.max(self.get_degree_values())
@@ -59,9 +60,7 @@ class Network:
         return 0.0
 
     def get_v_prime(self) -> np.ndarray:
-        return np.array(
-            [node for node, degree in self.get_degree().items() if degree > 1]
-        )
+        return np.array([node for node, degree in self.get_degree() if degree > 1])
 
     def get_s_prime(self, seed_set: np.ndarray) -> np.ndarray:
         s_prime = set()
@@ -77,10 +76,14 @@ class Network:
     def get_neighbors(self, node: int) -> np.ndarray:
         return np.array(list(self.graph.neighbors(node)))
 
-    def get_degree(self, node: Optional[int] = None) -> Union[int, dict]:
-        return (
-            dict(self.graph.degree(node)) if node is None else self.graph.degree(node)
-        )
+    def get_degree(self, node: Optional[Union[int, list]] = None):
+        if isinstance(node, int) or isinstance(node, np.int64):
+            deg: int = int(self.graph.degree(node))
+        elif isinstance(node, list) or isinstance(node, np.ndarray):
+            deg: np.ndarray = np.array(self.graph.degree(node))
+        elif node is None:
+            deg: np.ndarray = np.array(self.graph.degree())
+        return deg
 
     def get_degree_values(self) -> np.ndarray:
-        return np.array([degree for _, degree in self.get_degree().items()])
+        return np.array([degree for _, degree in self.get_degree()])
