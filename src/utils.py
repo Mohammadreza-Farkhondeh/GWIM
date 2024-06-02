@@ -1,9 +1,13 @@
+import cProfile
+import pstats
 from itertools import combinations
 
 import networkx as nx
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from src import optim
+from src.gwo import run_gwo_with_optimizer
 from src.network import Network
 
 
@@ -27,6 +31,9 @@ def get_network(n: str) -> Network:
         # pages food dataet with 2K edges
         # https://nrvis.com/download/data/soc/fb-pages-food.zip
         "food": "seed/fb-pages-foods.edges",
+        # pretty good privacy dataset with 25K edges
+        # https://nrvis.com/download/data/tech/tech-pgp.zip
+        "pgp": "seed/tech-pgp.edges",
     }
 
     if n in datasets:
@@ -123,3 +130,44 @@ def plot_comparison(results, imname):
     axs[0].set_ylabel("Alpha Fitness")
     plt.tight_layout()
     plt.savefig(f"{imname}.jpg")
+
+
+def get_result(network_name, population_size, seed_set_size, max_iter):
+    network: Network = get_network(n=network_name)
+
+    result = {
+        "No Optimization": run_gwo_with_optimizer(
+            network,
+            optim.no_optimization,
+            population_size=population_size,
+            seed_set_size=seed_set_size,
+            max_iter=max_iter,
+        ),
+        "Higher Degree Neighbor": run_gwo_with_optimizer(
+            network,
+            optim.replace_with_higher_degree_neighbor,
+            population_size=population_size,
+            seed_set_size=seed_set_size,
+            max_iter=max_iter,
+        ),
+    }
+
+    plot_comparison(results=result, imname=f"{network.name}_results")
+
+
+def profile_code(network, population_size, seed_set_size, max_iter):
+    pr = cProfile.Profile()
+    pr.enable()
+
+    # Run the optimizer
+    result = run_gwo_with_optimizer(
+        network,
+        optim.replace_with_higher_degree_neighbor,
+        population_size,
+        seed_set_size,
+        max_iter,
+    )
+
+    pr.disable()
+    ps = pstats.Stats(pr).sort_stats("cumtime")
+    ps.print_stats()

@@ -20,25 +20,7 @@ def replace_with_higher_degree_neighbor(
         max_degree_neighbor = max(neighbors, key=lambda n: network.get_degree(n))
 
         if node_degree > network.get_degree(max_degree_neighbor):
-            max_degree_nodes = [
-                n
-                for n in neighbors
-                if network.get_degree(n) == network.get_degree(max_degree_neighbor)
-            ]
-
-            max_sum_neighbors_degrees = 0
-            max_degree_node = None
-            for neighbor in max_degree_nodes:
-                neighbors_of_neighbor = network.get_neighbors(neighbor)
-                neighbors_degree_sum = sum(
-                    network.get_degree(n) for n in neighbors_of_neighbor
-                )
-
-                if neighbors_degree_sum > max_sum_neighbors_degrees:
-                    max_sum_neighbors_degrees = neighbors_degree_sum
-                    max_degree_node = neighbor
-
-            new_seed_set[i] = max_degree_node
+            new_seed_set[i] = max_degree_neighbor
 
     return new_seed_set
 

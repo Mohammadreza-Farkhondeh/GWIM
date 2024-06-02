@@ -2,15 +2,19 @@ from typing import Optional, Union
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 
 class Network:
     def __init__(self, graph: Optional[nx.Graph] = None, name: str = "") -> None:
         self.graph = graph if graph is not None else nx.Graph()
         self.name = name
-        self.v_prime: np.ndarray = self.get_v_prime()
-        self.v_prime_size: int = len(self.v_prime)
-        self.max_degree: int = np.max(self.get_degree_values())
+        self.degrees_df = pd.DataFrame(self.graph.degree(), columns=["node", "degree"])
+        self.v_prime = self.degrees_df[self.degrees_df["degree"] > 1]["node"].to_numpy(
+            dtype=np.int64
+        )
+        self.v_prime_size = len(self.v_prime)
+        self.max_degree = self.degrees_df["degree"].max()
 
     def evaluate_fitness(self, seed_set: np.ndarray) -> float:
         s_prime: np.ndarray = self.get_s_prime(seed_set)
@@ -78,12 +82,13 @@ class Network:
 
     def get_degree(self, node: Optional[Union[int, list]] = None):
         if isinstance(node, int) or isinstance(node, np.int64):
-            deg: int = int(self.graph.degree(node))
+            return self.degrees_df[self.degrees_df["node"] == node]["degree"].values[0]
         elif isinstance(node, list) or isinstance(node, np.ndarray):
-            deg: np.ndarray = np.array(self.graph.degree(node))
+            return self.degrees_df[self.degrees_df["node"].isin(node)][
+                "degree"
+            ].to_numpy()
         elif node is None:
-            deg: np.ndarray = np.array(self.graph.degree())
-        return deg
+            return self.degrees_df["degree"].to_numpy()
 
     def get_degree_values(self) -> np.ndarray:
         return np.array([degree for _, degree in self.get_degree()])

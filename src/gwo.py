@@ -15,14 +15,11 @@ class Wolf:
         self.fitness: float = self.evaluate_fitness()
 
     def get_random_position(self) -> np.ndarray:
-        return np.array(
-            [
-                np.random.random()
-                * self.network.get_degree(j)
-                / self.network.max_degree
-                for j in self.network.v_prime
-            ]
-        )
+        degrees = self.network.degrees_df[self.network.degrees_df["degree"] > 1][
+            "degree"
+        ].values
+        max_degree = self.network.max_degree
+        return np.random.random(len(self.network.v_prime)) * degrees / max_degree
 
     def get_seed_set(self) -> np.ndarray:
         node_prob_pairs = np.column_stack((self.network.v_prime, self.position))
@@ -41,18 +38,28 @@ class Wolf:
         a: float,
         seedset_optimizer: Optional[Callable] = None,
     ) -> None:
-        for i in range(len(self.position)):
-            A1, C1 = 2 * a * np.random.random() - a, 2 * np.random.random()
-            A2, C2 = 2 * a * np.random.random() - a, 2 * np.random.random()
-            A3, C3 = 2 * a * np.random.random() - a, 2 * np.random.random()
-            D_alpha = abs(C1 * alpha.position[i] - self.position[i])
-            D_beta = abs(C2 * beta.position[i] - self.position[i])
-            D_delta = abs(C3 * delta.position[i] - self.position[i])
-            X1 = alpha.position[i] - A1 * D_alpha
-            X2 = beta.position[i] - A2 * D_beta
-            X3 = delta.position[i] - A3 * D_delta
-            self.position[i] = (X1 + X2 + X3) / 3
+        A1, C1 = (
+            2 * a * np.random.random(len(self.position)) - a,
+            2 * np.random.random(len(self.position)),
+        )
+        A2, C2 = (
+            2 * a * np.random.random(len(self.position)) - a,
+            2 * np.random.random(len(self.position)),
+        )
+        A3, C3 = (
+            2 * a * np.random.random(len(self.position)) - a,
+            2 * np.random.random(len(self.position)),
+        )
 
+        D_alpha = abs(C1 * alpha.position - self.position)
+        D_beta = abs(C2 * beta.position - self.position)
+        D_delta = abs(C3 * delta.position - self.position)
+
+        X1 = alpha.position - A1 * D_alpha
+        X2 = beta.position - A2 * D_beta
+        X3 = delta.position - A3 * D_delta
+
+        self.position = (X1 + X2 + X3) / 3
         self.position = np.clip(self.position, 0, 1)
         self.fitness = self.evaluate_fitness()
 
@@ -89,7 +96,19 @@ class GWIMOptimizer:
         sorted_population = sorted(
             self.population, key=lambda wolf: wolf.fitness, reverse=True
         )
-        return sorted_population[0], sorted_population[1], sorted_population[2]
+        alpha = sorted_population[0]
+        beta = (
+            sorted_population[1]
+            if sorted_population[1] != alpha
+            else Wolf(self.network, self.seed_set_size)
+        )
+        delta = (
+            sorted_population[2]
+            if sorted_population[2] != alpha
+            else Wolf(self.network, self.seed_set_size)
+        )
+
+        return alpha, beta, delta
 
 
 def run_gwo_with_optimizer(
@@ -126,6 +145,20 @@ def run_gwo_with_optimizer(
                 a,
                 gwim_optimizer.seedset_optimizer,
             )
+        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
+            gwim_optimizer.get_leaders()
+        )
+
+        # Check if Beta or Delta are the same as Alpha and regenerate if needed
+        if np.array_equal(gwim_optimizer.beta.position, gwim_optimizer.alpha.position):
+            gwim_optimizer.beta = Wolf(
+                gwim_optimizer.network, gwim_optimizer.seed_set_size
+            )
+        if np.array_equal(gwim_optimizer.delta.position, gwim_optimizer.alpha.position):
+            gwim_optimizer.delta = Wolf(
+                gwim_optimizer.network, gwim_optimizer.seed_set_size
+            )
+
         gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
             gwim_optimizer.get_leaders()
         )
