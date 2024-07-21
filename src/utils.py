@@ -150,6 +150,13 @@ def get_result(network_name, population_size, seed_set_size, max_iter):
             seed_set_size=seed_set_size,
             max_iter=max_iter,
         ),
+        "Path High Worthiness": run_gwo_with_optimizer(
+            network,
+            optim.shortest_path_replacement,
+            population_size=population_size,
+            seed_set_size=seed_set_size,
+            max_iter=max_iter,
+        ),
     }
 
     plot_comparison(results=result, imname=f"{network.name}_results")
