@@ -4,6 +4,7 @@ from itertools import combinations
 
 import networkx as nx
 import pandas as pd
+import seaborn as sns
 from matplotlib import pyplot as plt
 
 from src import optim
@@ -109,7 +110,7 @@ def test_all_seed_sets(network):
     return fitness_results
 
 
-def plot_comparison(results, imname):
+def plot_comparison_(results, imname):
     num_optimizers = len(results)
     fig, axs = plt.subplots(
         1, num_optimizers, figsize=(num_optimizers * 6, 6), sharey=True
@@ -130,6 +131,41 @@ def plot_comparison(results, imname):
     axs[0].set_ylabel("Alpha Fitness")
     plt.tight_layout()
     plt.savefig(f"{imname}.jpg")
+
+
+def plot_comparison(results, imname):
+    sns.set(style="whitegrid")
+    num_optimizers = len(results)
+    fig, axs = plt.subplots(
+        1, num_optimizers, figsize=(num_optimizers * 6, 6), sharey=True
+    )
+    colors = sns.color_palette("husl", num_optimizers)
+    for i, (label, result) in enumerate(results.items()):
+        iterations = range(1, len(result[1]) + 1)
+        axs[i].plot(
+            iterations,
+            result[0],
+            label="Alpha Fitness",
+            color=colors[i],
+            linewidth=2,
+        )
+        axs[i].set_xlabel("Time / Iteration Number", fontsize=12)
+        axs[i].set_title(
+            f"Alpha Fitness vs. Time for {label}",
+            fontsize=14,
+            fontweight="bold",
+        )
+        axs[i].grid(True, linestyle="--", alpha=0.6)
+
+        ax2 = axs[i].twiny()
+        ax2.plot(result[1], result[0], alpha=0)
+        ax2.set_xlim(result[1][0], result[1][-1])
+        ax2.set_xlabel("Time", fontsize=12)
+        axs[i].legend(loc="best")
+
+    axs[0].set_ylabel("Alpha Fitness", fontsize=12)
+    plt.tight_layout()
+    plt.savefig(f"{imname}.jpg", dpi=640)
 
 
 def get_result(network_name, population_size, seed_set_size, max_iter):
@@ -166,7 +202,6 @@ def profile_code(network, population_size, seed_set_size, max_iter):
     pr = cProfile.Profile()
     pr.enable()
 
-    # Run the optimizer
     result = run_gwo_with_optimizer(
         network,
         optim.replace_with_higher_degree_neighbor,
