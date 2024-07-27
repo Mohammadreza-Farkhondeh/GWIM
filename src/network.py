@@ -42,26 +42,13 @@ class Network:
     def calculate_propagation_probability(
         self, node: int, seed_set: np.ndarray
     ) -> float:
-        propagation_probability: float = 0.0
-        for neighbor in seed_set:
-            propagation_probability += self.get_propagation_probability(
-                node, neighbor, seed_set
-            )
-        for neighbor1 in seed_set:
-            for neighbor2 in self.get_neighbors(neighbor1):
-                if neighbor2 in seed_set:
-                    propagation_probability += self.get_propagation_probability(
-                        node, neighbor1, seed_set
-                    ) * self.get_propagation_probability(neighbor1, neighbor2, seed_set)
-
-        return propagation_probability
-
-    def get_propagation_probability(
-        self, node1: int, node2: int, seed_set: np.ndarray
-    ) -> float:
-        if node2 in self.get_neighbors(node1) and node2 in seed_set:
-            return 1.0
-        return 0.0
+        neighbors = self.get_neighbors(node)
+        direct_influence = np.isin(neighbors, seed_set).astype(float)
+        second_order_neighbors = np.concatenate(
+            [self.get_neighbors(n) for n in neighbors]
+        )
+        second_order_influence = np.isin(second_order_neighbors, seed_set).astype(float)
+        return np.sum(direct_influence) + np.sum(second_order_influence)
 
     def get_v_prime(self) -> np.ndarray:
         return np.array([node for node, degree in self.get_degree() if degree > 1])
@@ -70,10 +57,9 @@ class Network:
         s_prime = set()
 
         for node in seed_set:
-            s_prime.update(self.get_neighbors(node))  # First-order neighbors
+            s_prime.update(self.get_neighbors(node))
             for neighbor in self.get_neighbors(node):
-                s_prime.update(self.get_neighbors(neighbor))  # Second-order neighbors
-
+                s_prime.update(self.get_neighbors(neighbor))
         s_prime = np.array(list(s_prime - set(seed_set)))
         return s_prime
 

@@ -12,6 +12,7 @@ def replace_with_higher_degree_neighbor(
     network: Network, seed_set: np.ndarray
 ) -> np.ndarray:
     new_seed_set = seed_set.copy()
+    current_fitness = network.evaluate_fitness(new_seed_set)
 
     for i, node in enumerate(seed_set):
         neighbors = network.get_neighbors(node)
@@ -22,11 +23,10 @@ def replace_with_higher_degree_neighbor(
             if neighbor_degree > node_degree:
                 temp_seed_set = new_seed_set.copy()
                 temp_seed_set[i] = neighbor
-                if network.evaluate_fitness(temp_seed_set) > network.evaluate_fitness(
-                    new_seed_set
-                ):
+                new_fitness = network.evaluate_fitness(temp_seed_set)
+                if new_fitness > current_fitness:
                     new_seed_set[i] = neighbor
-
+                    current_fitness = new_fitness
     return new_seed_set
 
 
@@ -45,7 +45,7 @@ def shortest_path_replacement(network: Network, seed_set: np.ndarray) -> np.ndar
     if not path_nodes:
         return new_seed_set
 
-    highest_degree_node = max(path_nodes, key=lambda node: network.get_degree(node))
+    highest_degree_node = max(path_nodes, key=network.get_degree)
     lowest_fitness_node_index = np.argmin(
         [network.calculate_worthiness(node, seed_set) for node in new_seed_set]
     )
@@ -53,7 +53,10 @@ def shortest_path_replacement(network: Network, seed_set: np.ndarray) -> np.ndar
     temp_seed_set = new_seed_set.copy()
     temp_seed_set[lowest_fitness_node_index] = highest_degree_node
 
-    if network.evaluate_fitness(temp_seed_set) > network.evaluate_fitness(new_seed_set):
+    current_fitness = network.evaluate_fitness(new_seed_set)
+    new_fitness = network.evaluate_fitness(temp_seed_set)
+
+    if new_fitness > current_fitness:
         new_seed_set = temp_seed_set
 
     return new_seed_set

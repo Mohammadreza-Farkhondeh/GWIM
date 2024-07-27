@@ -149,7 +149,6 @@ def run_gwo_with_optimizer(
             gwim_optimizer.get_leaders()
         )
 
-        # Check if Beta or Delta are the same as Alpha and regenerate if needed
         if np.array_equal(gwim_optimizer.beta.position, gwim_optimizer.alpha.position):
             gwim_optimizer.beta = Wolf(
                 gwim_optimizer.network, gwim_optimizer.seed_set_size
