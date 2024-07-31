@@ -23,6 +23,9 @@ def get_network(n: str) -> Network:
         # soc linkedin dataset with 19M edges
         # https://nrvis.com/download/data/soc/soc-linkedin.zip
         "soc-linkedin": "seed/soc-linkedin.edges",
+        # soc twitter higgs dataset with 15M edges.
+        # https://nrvis.com/download/data/soc/soc-twitter-higgs.zip
+        "soc-twitter-higgs": "seed/soc-twitter-higgs.edges"
         # congress twitter dataset with 13k edges
         # https://snap.stanford.edu/data/congress_network.zip
         "congress": "seed/congress.edgelist",

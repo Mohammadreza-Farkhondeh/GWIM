@@ -3,11 +3,11 @@ import os
 import matplotlib.pyplot as plt
 import networkx as nx
 
-# Create a sample graph
-G = nx.erdos_renyi_graph(30, 0.1, seed=42)
-seed_set = [0, 1, 2]
+G = nx.erdos_renyi_graph(60, 0.1)
+seed_set = [
+    8,
+]
 
-# Output directory
 output_dir = "visualizations"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -136,13 +136,16 @@ def save_replacement_process_visualization(G, seed_set, filename):
 
 
 def save_influence_convergence_visualization(
-    G, seed_set, iterations=10, filename="convergence.png"
+    G, seed_set, iterations=4, filename="convergence.png"
 ):
     pos = nx.spring_layout(G, seed=42)
 
-    for iteration in range(iterations):
-        plt.figure(figsize=(12, 10))
+    cols = 2
+    rows = (iterations // cols) + (1 if iterations % cols != 0 else 0)
 
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 16, rows * 16))
+
+    for iteration in range(iterations):
         active_nodes = set(seed_set)
         for _ in range(iteration):
             new_active_nodes = set()
@@ -153,6 +156,9 @@ def save_influence_convergence_visualization(
         node_colors = [
             "red" if node in active_nodes else "lightgray" for node in G.nodes()
         ]
+
+        ax = axes[iteration // cols, iteration % cols]
+        ax.clear()
         nx.draw(
             G,
             pos,
@@ -160,11 +166,15 @@ def save_influence_convergence_visualization(
             with_labels=True,
             node_size=500,
             edge_color="gray",
+            ax=ax,
         )
+        ax.set_title(f"Iteration {iteration + 1}")
 
-        plt.title(f"Influence Spread at Iteration {iteration + 1}")
-        plt.savefig(os.path.join(output_dir, f"{filename}_{iteration + 1}.png"))
-        plt.close()
+    for i in range(iteration + 1, rows * cols):
+        fig.delaxes(axes[i // cols, i % cols])
+
+    plt.tight_layout()
+    plt.savefig(filename)
 
 
 def save_node_influence_in_seed_set(G, seed_set, filename):
@@ -308,7 +318,10 @@ def visualize_influence(G, seed_set, imname):
 
     plt.figure(figsize=(12, 10))
     fig, ax = plt.subplots(figsize=(12, 10))
-    node_colors = [influences.get(node, 0) / max_influence for node in G.nodes()]
+    try:
+        node_colors = [influences.get(node, 0) / max_influence for node in G.nodes()]
+    except ZeroDivisionError:
+        node_colors = [influences.get(node, 0) for node in G.nodes()]
     nx.draw(
         G,
         pos,
@@ -347,7 +360,10 @@ def visualize_influence(G, seed_set, imname):
 
     plt.figure(figsize=(12, 10))
     fig, ax = plt.subplots(figsize=(12, 10))
-    node_colors = [path_influences.get(node, 0) / max_influence for node in G.nodes()]
+    try:
+        node_colors = [influences.get(node, 0) / max_influence for node in G.nodes()]
+    except ZeroDivisionError:
+        node_colors = [influences.get(node, 0) for node in G.nodes()]
     nx.draw(
         G,
         pos,
@@ -385,7 +401,7 @@ save_highlight_seed_neighbors(G, seed_set, "highlight_seed_neighbors.png")
 save_highlight_shortest_paths(G, seed_set, "highlight_shortest_paths.png")
 save_heatmap_node_influence(G, seed_set, "heatmap_node_influence.png")
 save_replacement_process_visualization(G, seed_set, "replacement_process")
-save_influence_convergence_visualization(G, seed_set, iterations=10)
+save_influence_convergence_visualization(G, seed_set, iterations=4)
 save_node_influence_in_seed_set(G, seed_set, "node_influence_in_seed_set.png")
 save_node_influence_seed_and_shortest_paths(G, seed_set, "node_influence_seed.png")
 save_individual_node_influence(G, seed_set)
@@ -484,3 +500,7 @@ for idx, (centrality_name, centrality_values) in enumerate(
 
 plt.savefig(os.path.join(output_dir, "multi.png"))
 plt.close()
+
+save_influence_convergence_visualization(
+    G, seed_set, iterations=5, filename="convergence.gif"
+)
