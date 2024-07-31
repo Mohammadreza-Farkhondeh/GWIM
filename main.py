@@ -7,7 +7,7 @@ logging.basicConfig(
 )
 logging.info("Script started.")
 
-get_result("fsfs", population_size=10, seed_set_size=3, max_iter=10)
+get_result("fsfs", population_size=10, seed_set_size=3, max_iter=50)
 
 # get_result("hamsterster", population_size=60, seed_set_size=5, max_iter=40)
 

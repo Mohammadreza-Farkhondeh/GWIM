@@ -1,8 +1,6 @@
-import logging
-import time
-from typing import Callable, Optional, Tuple
-
 import numpy as np
+from typing import Optional, Callable, Tuple, List
+import logging
 
 from src.network import Network
 
@@ -15,16 +13,14 @@ class Wolf:
         self.fitness: float = self.evaluate_fitness()
 
     def get_random_position(self) -> np.ndarray:
-        degrees = self.network.degrees_df[self.network.degrees_df["degree"] > 1][
-            "degree"
-        ].values
+        degrees = self.network.degrees_df[self.network.degrees_df["degree"] > 1]["degree"].values
         max_degree = self.network.max_degree
         return np.random.random(len(self.network.v_prime)) * degrees / max_degree
 
     def get_seed_set(self) -> np.ndarray:
         node_prob_pairs = np.column_stack((self.network.v_prime, self.position))
         sorted_nodes = node_prob_pairs[node_prob_pairs[:, 1].argsort()[::-1]]
-        return sorted_nodes[: self.seed_set_size, 0].astype(int)
+        return sorted_nodes[:self.seed_set_size, 0].astype(int)
 
     def evaluate_fitness(self) -> float:
         self.seed_set = self.get_seed_set()
@@ -38,18 +34,9 @@ class Wolf:
         a: float,
         seedset_optimizer: Optional[Callable] = None,
     ) -> None:
-        A1, C1 = (
-            2 * a * np.random.random(len(self.position)) - a,
-            2 * np.random.random(len(self.position)),
-        )
-        A2, C2 = (
-            2 * a * np.random.random(len(self.position)) - a,
-            2 * np.random.random(len(self.position)),
-        )
-        A3, C3 = (
-            2 * a * np.random.random(len(self.position)) - a,
-            2 * np.random.random(len(self.position)),
-        )
+        A1, C1 = (2 * a * np.random.random(len(self.position)) - a, 2 * np.random.random(len(self.position)))
+        A2, C2 = (2 * a * np.random.random(len(self.position)) - a, 2 * np.random.random(len(self.position)))
+        A3, C3 = (2 * a * np.random.random(len(self.position)) - a, 2 * np.random.random(len(self.position)))
 
         D_alpha = abs(C1 * alpha.position - self.position)
         D_beta = abs(C2 * beta.position - self.position)
@@ -84,88 +71,15 @@ class GWIMOptimizer:
         self.seed_set_size = seed_set_size
         self.max_iter = max_iter
         self.seedset_optimizer = seedset_optimizer
-        self.population: list = [
-            Wolf(network, seed_set_size) for _ in range(population_size)
-        ]
+        self.population: List[Wolf] = [Wolf(network, seed_set_size) for _ in range(population_size)]
         self.alpha, self.beta, self.delta = self.get_leaders()
         logging.debug(
             f"Initialized GWIMOptimizer with alpha: {self.alpha.seed_set}, beta: {self.beta.seed_set}, delta: {self.delta.seed_set}"
         )
 
     def get_leaders(self) -> Tuple[Wolf, Wolf, Wolf]:
-        sorted_population = sorted(
-            self.population, key=lambda wolf: wolf.fitness, reverse=True
-        )
+        sorted_population = sorted(self.population, key=lambda wolf: wolf.fitness, reverse=True)
         alpha = sorted_population[0]
-        beta = (
-            sorted_population[1]
-            if sorted_population[1] != alpha
-            else Wolf(self.network, self.seed_set_size)
-        )
-        delta = (
-            sorted_population[2]
-            if sorted_population[2] != alpha
-            else Wolf(self.network, self.seed_set_size)
-        )
-
+        beta = sorted_population[1] if sorted_population[1] != alpha else Wolf(self.network, self.seed_set_size)
+        delta = sorted_population[2] if sorted_population[2] != alpha else Wolf(self.network, self.seed_set_size)
         return alpha, beta, delta
-
-
-def run_gwo_with_optimizer(
-    network: Network,
-    optimizer: Callable,
-    population_size,
-    seed_set_size,
-    max_iter,
-) -> list[list]:
-    logging.info(
-        f"Running GWO with seedset optimizer {optimizer.__name__} for network {network.name}."
-    )
-    gwim_optimizer = GWIMOptimizer(
-        network=network,
-        population_size=population_size,
-        seed_set_size=seed_set_size,
-        max_iter=max_iter,
-        seedset_optimizer=optimizer,
-    )
-
-    alpha_fitness_over_time = []
-    fitness_time = []
-    start_time = time.time()
-    a = 2.0
-    for iter_num in range(gwim_optimizer.max_iter):
-        logging.debug(
-            f"Iteration {iter_num}, alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
-        )
-        for wolf in gwim_optimizer.population:
-            wolf.update_position(
-                gwim_optimizer.alpha,
-                gwim_optimizer.beta,
-                gwim_optimizer.delta,
-                a,
-                gwim_optimizer.seedset_optimizer,
-            )
-        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
-            gwim_optimizer.get_leaders()
-        )
-
-        if np.array_equal(gwim_optimizer.beta.position, gwim_optimizer.alpha.position):
-            gwim_optimizer.beta = Wolf(
-                gwim_optimizer.network, gwim_optimizer.seed_set_size
-            )
-        if np.array_equal(gwim_optimizer.delta.position, gwim_optimizer.alpha.position):
-            gwim_optimizer.delta = Wolf(
-                gwim_optimizer.network, gwim_optimizer.seed_set_size
-            )
-
-        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
-            gwim_optimizer.get_leaders()
-        )
-        alpha_fitness_over_time.append(gwim_optimizer.alpha.fitness)
-        fitness_time.append(time.time() - start_time)
-        a -= 2 / gwim_optimizer.max_iter
-        logging.debug(
-            f"New alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
-        )
-
-    return [alpha_fitness_over_time, fitness_time]
