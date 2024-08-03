@@ -1,18 +1,20 @@
 import cProfile
-import pstats
-from itertools import combinations
-from typing import List, Callable
 import logging
+import pstats
+import random
 import time
+from itertools import combinations
+from typing import Callable
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import rustworkx as rx
 import seaborn as sns
 from matplotlib import pyplot as plt
 
 from src import optim
+from src.gwo import GWIMOptimizer, Wolf
 from src.network import Network
-from src.gwo import Wolf, GWIMOptimizer
 
 
 def get_network(n: str) -> Network:
@@ -20,7 +22,6 @@ def get_network(n: str) -> Network:
         "enron": "seed/enron.csv",
         "soc-twitter-follows": "seed/soc-twitter-follows.csv",
         "soc-linkedin": "seed/soc-linkedin.edges",
-        "soc-twitter-higgs": "seed/soc-twitter-higgs.edges",
         "congress": "seed/congress.edgelist",
         "hamsterster": "seed/soc-hamsterster.edges",
         "food": "seed/fb-pages-foods.edges",
@@ -29,13 +30,23 @@ def get_network(n: str) -> Network:
 
     if n in datasets:
         try:
-            edgelist_df = pd.read_csv(datasets[n], sep=" ", header=None, names=["source", "target"])
-            nodes = pd.unique(edgelist_df[['source', 'target']].values.ravel('K'))
-            adjacency_matrix = pd.DataFrame(0, index=nodes, columns=nodes)
+            edgelist_df = pd.read_csv(
+                datasets[n],
+                sep=" ",
+                header=0,
+                dtype=np.int64,
+            )
+            graph = rx.PyGraph()
+            node_indices = {}
             for _, row in edgelist_df.iterrows():
-                adjacency_matrix.at[row['source'], row['target']] = 1
-                adjacency_matrix.at[row['target'], row['source']] = 1
-            network = Network(adjacency_matrix, name=n)
+                if row["source"] not in node_indices:
+                    node_indices[row["source"]] = graph.add_node(row["source"])
+                if row["target"] not in node_indices:
+                    node_indices[row["target"]] = graph.add_node(row["target"])
+                graph.add_edge(
+                    node_indices[row["source"]], node_indices[row["target"]], 1.0
+                )
+            network = Network(graph=graph, name=n)
             return network
         except FileNotFoundError:
             print(f"The file for {n} dataset was not found.")
@@ -46,45 +57,55 @@ def get_network(n: str) -> Network:
         except Exception as e:
             print(f"An error occurred: {e}")
     elif n == "barbasi":
-        edges = [(i, j) for i in range(100) for j in range(i+1, min(100, i+6))]
-        edgelist_df = pd.DataFrame(edges, columns=["source", "target"])
+        graph = rx.generators.barabasi_albert_graph(100, 5)
+        network = Network(graph=graph)
     elif n == "watts":
-        nodes = list(range(100))
-        edges = []
-        for i in nodes:
-            for j in range(1, 6):
-                if i + j < 100:
-                    edges.append((i, i + j))
-                else:
-                    edges.append((i, (i + j) % 100))
-        np.random.shuffle(edges)
-        edges = edges[:int(0.33 * len(edges))]
-        edgelist_df = pd.DataFrame(edges, columns=["source", "target"])
+        graph = rx.generators.watts_strogatz_graph(100, 5, 0.33)
+        network = Network(graph=graph)
     elif n == "erdos":
-        nodes = list(range(100))
-        edges = []
-        for i in nodes:
-            for j in range(i + 1, 100):
-                if np.random.random() < 0.025:
-                    edges.append((i, j))
-        edgelist_df = pd.DataFrame(edges, columns=["source", "target"])
+        graph = rx.generators.erdos_renyi_graph(100, 0.025)
+        network = Network(graph=graph)
     else:
         edges = [
-            (1, 2), (1, 3), (1, 4), (1, 5), (2, 3), (2, 6), (3, 7),
-            (4, 5), (4, 8), (5, 6), (5, 9), (6, 7), (6, 10), (7, 8),
-            (7, 9), (7, 10), (7, 11), (8, 10), (9, 10), (10, 12),
-            (12, 13), (12, 14), (12, 15), (12, 16), (13, 14),
-            (14, 15), (14, 16), (15, 16)
+            (1, 2),
+            (1, 3),
+            (1, 4),
+            (1, 5),
+            (2, 3),
+            (2, 6),
+            (3, 7),
+            (4, 5),
+            (4, 8),
+            (5, 6),
+            (5, 9),
+            (6, 7),
+            (6, 10),
+            (7, 8),
+            (7, 9),
+            (7, 10),
+            (7, 11),
+            (8, 10),
+            (9, 10),
+            (10, 12),
+            (12, 13),
+            (12, 14),
+            (12, 15),
+            (12, 16),
+            (13, 14),
+            (14, 15),
+            (14, 16),
+            (15, 16),
         ]
-        edgelist_df = pd.DataFrame(edges, columns=["source", "target"])
+        graph = rx.PyGraph()
+        node_indices = {}
+        for edge in edges:
+            if edge[0] not in node_indices:
+                node_indices[edge[0]] = graph.add_node(edge[0])
+            if edge[1] not in node_indices:
+                node_indices[edge[1]] = graph.add_node(edge[1])
+            graph.add_edge(node_indices[edge[0]], node_indices[edge[1]], 1.0)
+        network = Network(graph=graph)
 
-    nodes = pd.unique(edgelist_df[['source', 'target']].values.ravel('K'))
-    adjacency_matrix = pd.DataFrame(0, index=nodes, columns=nodes)
-    for _, row in edgelist_df.iterrows():
-        adjacency_matrix.at[row['source'], row['target']] = 1
-        adjacency_matrix.at[row['target'], row['source']] = 1
-
-    network = Network(adjacency_matrix)
     return network
 
 
@@ -156,7 +177,7 @@ def plot_comparison(results, imname):
 
     axs[0].set_ylabel("Alpha Fitness", fontsize=12)
     plt.tight_layout()
-    plt.savefig(f"{imname}.jpg", dpi=640)
+    plt.savefig(f"{imname}_{random.randint(a=100, b=999)}.jpg", dpi=1080)
 
 
 def profile_code(network, population_size, seed_set_size, max_iter):
@@ -177,13 +198,11 @@ def profile_code(network, population_size, seed_set_size, max_iter):
 
 
 def run_gwo_with_optimizer(
-    network: Network,
-    optimizer: Callable,
-    population_size: int,
-    seed_set_size: int,
-    max_iter: int,
-) -> List[List]:
-    logging.info(f"Running GWO with seedset optimizer {optimizer.__name__} for network {network.name}.")
+    network: Network, optimizer: Callable, population_size, seed_set_size, max_iter
+) -> list[list]:
+    logging.info(
+        f"Running GWO with seedset optimizer {optimizer.__name__} for network {network.name}."
+    )
     gwim_optimizer = GWIMOptimizer(
         network=network,
         population_size=population_size,
@@ -208,44 +227,54 @@ def run_gwo_with_optimizer(
                 a,
                 gwim_optimizer.seedset_optimizer,
             )
-        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = gwim_optimizer.get_leaders()
+        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
+            gwim_optimizer.get_leaders()
+        )
 
         if np.array_equal(gwim_optimizer.beta.position, gwim_optimizer.alpha.position):
-            gwim_optimizer.beta = Wolf(gwim_optimizer.network, gwim_optimizer.seed_set_size)
+            gwim_optimizer.beta = Wolf(
+                gwim_optimizer.network, gwim_optimizer.seed_set_size
+            )
         if np.array_equal(gwim_optimizer.delta.position, gwim_optimizer.alpha.position):
-            gwim_optimizer.delta = Wolf(gwim_optimizer.network, gwim_optimizer.seed_set_size)
+            gwim_optimizer.delta = Wolf(
+                gwim_optimizer.network, gwim_optimizer.seed_set_size
+            )
 
-        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = gwim_optimizer.get_leaders()
+        gwim_optimizer.alpha, gwim_optimizer.beta, gwim_optimizer.delta = (
+            gwim_optimizer.get_leaders()
+        )
         alpha_fitness_over_time.append(gwim_optimizer.alpha.fitness)
         fitness_time.append(time.time() - start_time)
         a -= 2 / gwim_optimizer.max_iter
         logging.debug(
-            f"Updated alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
+            f"New alpha wolf: {gwim_optimizer.alpha.seed_set}, fitness: {gwim_optimizer.alpha.fitness:.3f}"
         )
+
     return [alpha_fitness_over_time, fitness_time, gwim_optimizer.alpha]
 
 
-def get_result(network_name, population_size, seed_set_size, max_iter):
+def get_result(args):
+    network_name, population_size, seed_set_size, max_iter = args
     network: Network = get_network(n=network_name)
 
     result = {
         "No Optimization": run_gwo_with_optimizer(
             network,
-            optim.no_optimization,
+            optim.non_optimizer,
             population_size=population_size,
             seed_set_size=seed_set_size,
             max_iter=max_iter,
         ),
         "Higher Degree Neighbor": run_gwo_with_optimizer(
             network,
-            optim.replace_with_higher_degree_neighbor,
+            optim.neighbor_based_optimizer,
             population_size=population_size,
             seed_set_size=seed_set_size,
             max_iter=max_iter,
         ),
         "Path High Worthiness": run_gwo_with_optimizer(
             network,
-            optim.shortest_path_replacement,
+            optim.shortest_path_replacement_optimizer,
             population_size=population_size,
             seed_set_size=seed_set_size,
             max_iter=max_iter,
@@ -253,3 +282,4 @@ def get_result(network_name, population_size, seed_set_size, max_iter):
     }
 
     plot_comparison(results=result, imname=f"{network.name}_results")
+    return result

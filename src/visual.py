@@ -2,19 +2,17 @@ import os
 
 import matplotlib.pyplot as plt
 import networkx as nx
+import numpy as np
 
-G = nx.erdos_renyi_graph(60, 0.1)
-seed_set = [
-    8,
-]
-
+G = nx.erdos_renyi_graph(20, 0.1)
+seed_set = [3, 6, 9]
 output_dir = "visualizations"
 os.makedirs(output_dir, exist_ok=True)
 
 
 def save_highlight_seed_neighbors(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(12, 10))
+    pos = nx.kamada_kawai_layout(G)
+    plt.figure(figsize=(10, 8))
 
     neighbors = set()
     for seed in seed_set:
@@ -22,21 +20,29 @@ def save_highlight_seed_neighbors(G, seed_set, filename):
     neighbors -= set(seed_set)
 
     nx.draw_networkx_nodes(G, pos, node_color="lightgray", node_size=500)
-    nx.draw_networkx_nodes(G, pos, nodelist=seed_set, node_color="red", node_size=700)
     nx.draw_networkx_nodes(
-        G, pos, nodelist=neighbors, node_color="orange", node_size=500
+        G, pos, nodelist=seed_set, node_color="red", node_size=700, label="Seed Nodes"
+    )
+    nx.draw_networkx_nodes(
+        G,
+        pos,
+        nodelist=neighbors,
+        node_color="orange",
+        node_size=500,
+        label="Neighbors",
     )
     nx.draw_networkx_edges(G, pos, alpha=0.5)
     nx.draw_networkx_labels(G, pos)
 
     plt.title("Seed Set and Their Neighbors")
-    plt.savefig(os.path.join(output_dir, filename))
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
 def save_highlight_shortest_paths(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(12, 10))
+    pos = nx.kamada_kawai_layout(G)
+    plt.figure(figsize=(10, 8))
 
     path_nodes = set()
     for i in range(len(seed_set)):
@@ -50,28 +56,36 @@ def save_highlight_shortest_paths(G, seed_set, filename):
     path_nodes -= set(seed_set)
 
     nx.draw_networkx_nodes(G, pos, node_color="lightgray", node_size=500)
-    nx.draw_networkx_nodes(G, pos, nodelist=seed_set, node_color="red", node_size=700)
     nx.draw_networkx_nodes(
-        G, pos, nodelist=path_nodes, node_color="blue", node_size=500
+        G, pos, nodelist=seed_set, node_color="red", node_size=700, label="Seed Nodes"
+    )
+    nx.draw_networkx_nodes(
+        G,
+        pos,
+        nodelist=path_nodes,
+        node_color="blue",
+        node_size=500,
+        label="Path Nodes",
     )
     nx.draw_networkx_edges(G, pos, alpha=0.5)
     nx.draw_networkx_labels(G, pos)
 
     plt.title("Nodes in Shortest Paths Between Seed Nodes")
-    plt.savefig(os.path.join(output_dir, filename))
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
 def save_heatmap_node_influence(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(12, 10))
-    fig, ax = plt.subplots(figsize=(12, 10))
+    pos = nx.kamada_kawai_layout(G)
 
-    # Compute influence as the degree for visualization
+    plt.figure(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 8))
+
     influence_scores = {node: G.degree(node) for node in G.nodes()}
     max_influence = max(influence_scores.values(), default=1)
     norm_influence_scores = {
-        node: (influence_scores[node] / max_influence) for node in G.nodes()
+        node: influence_scores[node] / max_influence for node in G.nodes()
     }
 
     node_colors = [
@@ -96,25 +110,36 @@ def save_heatmap_node_influence(G, seed_set, filename):
     cbar.set_label("Influence Score")
 
     plt.title("Heatmap of Node Influence")
-    plt.savefig(os.path.join(output_dir, filename))
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
 def save_replacement_process_visualization(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
+    pos = nx.kamada_kawai_layout(G)
 
     for i, node in enumerate(seed_set):
-        plt.figure(figsize=(12, 10))
+        plt.figure(figsize=(10, 8))
 
         neighbors = list(G.neighbors(node))
         neighbor_degrees = {neighbor: G.degree(neighbor) for neighbor in neighbors}
 
+        # Draw nodes and edges
         nx.draw_networkx_nodes(G, pos, node_color="lightgray", node_size=500)
         nx.draw_networkx_nodes(
-            G, pos, nodelist=seed_set, node_color="red", node_size=700
+            G,
+            pos,
+            nodelist=seed_set,
+            node_color="red",
+            node_size=700,
+            label="Seed Nodes",
         )
         nx.draw_networkx_nodes(
-            G, pos, nodelist=neighbors, node_color="orange", node_size=500
+            G,
+            pos,
+            nodelist=neighbors,
+            node_color="orange",
+            node_size=500,
+            label="Neighbors",
         )
 
         if neighbor_degrees:
@@ -125,21 +150,22 @@ def save_replacement_process_visualization(G, seed_set, filename):
                 nodelist=[highest_degree_neighbor],
                 node_color="blue",
                 node_size=900,
+                label="Replacement Node",
             )
 
         nx.draw_networkx_edges(G, pos, alpha=0.5)
         nx.draw_networkx_labels(G, pos)
 
         plt.title(f"Replacement Process Step {i + 1}")
-        plt.savefig(os.path.join(output_dir, f"{filename}_{i + 1}.png"))
+        plt.legend()
+        plt.savefig(os.path.join(output_dir, f"{filename}_{i + 1}.png"), dpi=720)
         plt.close()
 
 
 def save_influence_convergence_visualization(
     G, seed_set, iterations=4, filename="convergence.png"
 ):
-    pos = nx.spring_layout(G, seed=42)
-
+    pos = nx.kamada_kawai_layout(G)
     cols = 2
     rows = (iterations // cols) + (1 if iterations % cols != 0 else 0)
 
@@ -156,7 +182,6 @@ def save_influence_convergence_visualization(
         node_colors = [
             "red" if node in active_nodes else "lightgray" for node in G.nodes()
         ]
-
         ax = axes[iteration // cols, iteration % cols]
         ax.clear()
         nx.draw(
@@ -174,12 +199,13 @@ def save_influence_convergence_visualization(
         fig.delaxes(axes[i // cols, i % cols])
 
     plt.tight_layout()
-    plt.savefig(filename)
+    plt.savefig(filename, dpi=720)
+    plt.close()
 
 
 def save_node_influence_in_seed_set(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(12, 10))
+    pos = nx.kamada_kawai_layout(G)
+    plt.figure(figsize=(10, 8))
 
     influence_scores = {node: G.degree(node) for node in seed_set}
 
@@ -194,13 +220,13 @@ def save_node_influence_in_seed_set(G, seed_set, filename):
     nx.draw_networkx_labels(G, pos)
 
     plt.title("Node Influence in Seed Set")
-    plt.savefig(os.path.join(output_dir, filename))
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
 def save_node_influence_seed_and_shortest_paths(G, seed_set, filename):
-    pos = nx.spring_layout(G, seed=42)
-    plt.figure(figsize=(12, 10))
+    pos = nx.kamada_kawai_layout(G)
+    plt.figure(figsize=(10, 8))
 
     influence_scores = {node: G.degree(node) for node in G.nodes()}
 
@@ -230,35 +256,103 @@ def save_node_influence_seed_and_shortest_paths(G, seed_set, filename):
     )
     nx.draw_networkx_labels(G, pos)
 
-    plt.title("Node Influence in Seed Set and Shortest Path Nodes")
-    plt.savefig(os.path.join(output_dir, filename))
+    plt.title("Node Influence in Seed Set and Shortest Paths")
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
-def save_individual_node_influence(G, seed_set):
-    pos = nx.spring_layout(G, seed=42)
-    influence_scores = {node: G.degree(node) for node in G.nodes()}
+def calculate_propagation_probability(graph, node, seed_set, decay_factor=0.5):
+    direct_neighbors = set(graph.neighbors(node))
+    direct_influence = np.isin(list(direct_neighbors), seed_set).astype(float)
+
+    second_order_neighbors = set()
+    for neighbor in direct_neighbors:
+        second_order_neighbors.update(graph.neighbors(neighbor))
+
+    # Remove direct neighbors and the node itself from second order neighbors
+    second_order_neighbors.difference_update(direct_neighbors)
+    second_order_neighbors.discard(node)
+
+    second_order_influence = np.isin(list(second_order_neighbors), seed_set).astype(
+        float
+    )
+
+    # Apply decay factor for second-order influence
+    total_influence = np.sum(direct_influence) + decay_factor * np.sum(
+        second_order_influence
+    )
+    return total_influence
+
+
+def calculate_worthiness(graph, node, seed_set, decay_factor=0.5):
+    propagation_probability = calculate_propagation_probability(
+        graph, node, seed_set, decay_factor
+    )
+    degree = len(list(graph.neighbors(node)))
+    worthiness = propagation_probability * degree
+    return worthiness
+
+
+def evaluate_fitness(graph, seed_set, decay_factor=0.5):
+    s_prime = set(seed_set)
+    worthiness = np.array(
+        [calculate_worthiness(graph, node, seed_set, decay_factor) for node in s_prime]
+    )
+    total_worthiness = np.sum(worthiness)
+    if total_worthiness == 0:
+        return 0.0
+    proportions = worthiness / total_worthiness
+    entropy = -np.sum(proportions * np.log(proportions + 1e-10))
+    return entropy
+
+
+def calculate_influence(graph, seed_node, decay_factor=0.5):
+    influence_scores = {}
+    for node in graph.nodes():
+        influence_scores[node] = calculate_propagation_probability(
+            graph, node, [seed_node], decay_factor
+        )
+    return influence_scores
+
+
+def save_individual_node_influence(G, seed_set, decay_factor=0.5):
+    pos = nx.kamada_kawai_layout(G)
 
     for node in seed_set:
-        plt.figure(figsize=(12, 10))
+        influence_scores = calculate_influence(G, node, decay_factor)
+        max_influence = max(influence_scores.values(), default=1)
+        norm_influence_scores = {
+            n: influence_scores[n] / max_influence if max_influence else 0
+            for n in G.nodes()
+        }
 
-        nx.draw(G, pos, node_color="lightgray", node_size=500, edge_color="gray")
-        nx.draw_networkx_nodes(
-            G,
-            pos,
-            nodelist=[node],
-            node_color="red",
-            node_size=influence_scores[node] * 100,
-        )
+        plt.figure(figsize=(10, 8))
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        node_colors = [plt.cm.viridis(norm_influence_scores[n]) for n in G.nodes()]
+
+        nx.draw(G, pos, node_color=node_colors, node_size=500, edge_color="gray")
+        nx.draw_networkx_nodes(G, pos, nodelist=[node], node_color="red", node_size=700)
         nx.draw_networkx_labels(G, pos)
 
         plt.title(f"Influence of Node {node}")
-        plt.savefig(os.path.join(output_dir, f"influence_node_{node}.png"))
+        sm = plt.cm.ScalarMappable(
+            cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=max_influence)
+        )
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax)
+        cbar.set_label("Influence Score")
+
+        plt.savefig(
+            os.path.join(output_dir, f"individual_node_influence_{node}.png"), dpi=720
+        )
         plt.close()
 
 
-def save_top_influential_shortest_path_nodes(G, seed_set, top_k=3):
-    pos = nx.spring_layout(G, seed=42)
+def save_top_influential_shortest_path_nodes(G, seed_set, top_k, filename):
+    pos = nx.kamada_kawai_layout(G)
+    plt.figure(figsize=(10, 8))
+
     influence_scores = {node: G.degree(node) for node in G.nodes()}
 
     path_nodes = set()
@@ -271,155 +365,33 @@ def save_top_influential_shortest_path_nodes(G, seed_set, top_k=3):
                 continue
 
     path_nodes -= set(seed_set)
-    top_influential_nodes = sorted(
+    top_path_nodes = sorted(
         path_nodes, key=lambda node: influence_scores[node], reverse=True
     )[:top_k]
 
-    for i, node in enumerate(top_influential_nodes):
-        plt.figure(figsize=(12, 10))
-
-        nx.draw(G, pos, node_color="lightgray", node_size=500, edge_color="gray")
-        nx.draw_networkx_nodes(
-            G,
-            pos,
-            nodelist=[node],
-            node_color="blue",
-            node_size=influence_scores[node] * 100,
-        )
-        nx.draw_networkx_labels(G, pos)
-
-        plt.title(f"Top Influential Node in Shortest Paths: {node}")
-        plt.savefig(os.path.join(output_dir, f"top_influential_node_{i + 1}.png"))
-        plt.close()
-
-
-def calculate_influence(G, seed_set, node):
-    extended_seed_set = set(seed_set) | {node}
-
-    node_degrees = dict(G.degree())
-
-    influence = 0
-    for n in G.nodes():
-        if n in extended_seed_set:
-            neighbors = set(G.neighbors(n))
-            influence += sum(
-                node_degrees.get(nei, 0)
-                for nei in neighbors
-                if nei in extended_seed_set
-            )
-
-    return influence
-
-
-def visualize_influence(G, seed_set, imname):
-    pos = nx.spring_layout(G, seed=42)
-    influences = {node: calculate_influence(G, seed_set, node) for node in seed_set}
-    max_influence = max(influences.values(), default=1)
-
-    plt.figure(figsize=(12, 10))
-    fig, ax = plt.subplots(figsize=(12, 10))
-    try:
-        node_colors = [influences.get(node, 0) / max_influence for node in G.nodes()]
-    except ZeroDivisionError:
-        node_colors = [influences.get(node, 0) for node in G.nodes()]
-    nx.draw(
-        G,
-        pos,
-        node_color=node_colors,
-        with_labels=True,
-        node_size=500,
-        edge_color="gray",
-        cmap=plt.cm.viridis,
+    nx.draw(G, pos, node_color="lightgray", node_size=500, edge_color="gray")
+    nx.draw_networkx_nodes(
+        G, pos, nodelist=seed_set, node_color="red", node_size=700, label="Seed Nodes"
     )
-
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=max_influence)
-    )
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax)
-    cbar.set_label("Influence Score")
-
-    plt.title("Heatmap of Node Influence")
-    plt.savefig(os.path.join(output_dir, imname))
-    plt.close()
-
-    all_paths = []
-    for i in range(len(seed_set)):
-        for j in range(i + 1, len(seed_set)):
-            try:
-                path = nx.shortest_path(G, source=seed_set[i], target=seed_set[j])
-                all_paths.extend(path)
-            except nx.NetworkXNoPath:
-                continue
-
-    path_nodes = set(all_paths)
-    path_influences = {
-        node: calculate_influence(G, seed_set, node) for node in path_nodes
-    }
-    top_nodes = sorted(path_influences, key=path_influences.get, reverse=True)[:3]
-
-    plt.figure(figsize=(12, 10))
-    fig, ax = plt.subplots(figsize=(12, 10))
-    try:
-        node_colors = [influences.get(node, 0) / max_influence for node in G.nodes()]
-    except ZeroDivisionError:
-        node_colors = [influences.get(node, 0) for node in G.nodes()]
-    nx.draw(
-        G,
-        pos,
-        node_color=node_colors,
-        with_labels=True,
-        node_size=500,
-        edge_color="gray",
-        cmap=plt.cm.viridis,
-    )
-
     nx.draw_networkx_nodes(
         G,
         pos,
-        nodelist=top_nodes,
-        node_color="none",
+        nodelist=top_path_nodes,
+        node_color="green",
         node_size=700,
-        edgecolors="blue",
-        linewidths=2,
+        label="Top Path Nodes",
     )
+    nx.draw_networkx_labels(G, pos)
 
-    sm = plt.cm.ScalarMappable(
-        cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=max_influence)
-    )
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax)
-    cbar.set_label("Influence Score")
-
-    plt.title("Top Influential Nodes in Shortest Paths")
-    plt.savefig(os.path.join(output_dir, imname))
+    plt.title("Top Influential Nodes in Shortest Paths Between Seed Nodes")
+    plt.legend()
+    plt.savefig(os.path.join(output_dir, filename), dpi=720)
     plt.close()
 
 
-# Save visualizations
-save_highlight_seed_neighbors(G, seed_set, "highlight_seed_neighbors.png")
-save_highlight_shortest_paths(G, seed_set, "highlight_shortest_paths.png")
-save_heatmap_node_influence(G, seed_set, "heatmap_node_influence.png")
-save_replacement_process_visualization(G, seed_set, "replacement_process")
-save_influence_convergence_visualization(G, seed_set, iterations=4)
-save_node_influence_in_seed_set(G, seed_set, "node_influence_in_seed_set.png")
-save_node_influence_seed_and_shortest_paths(G, seed_set, "node_influence_seed.png")
-save_individual_node_influence(G, seed_set)
-save_top_influential_shortest_path_nodes(G, seed_set)
-visualize_influence(G, seed_set, "influence_top_nodes.png")
-
-
-def compute_centrality(G):
-    degree_centrality = nx.degree_centrality(G)
-    betweenness_centrality = nx.betweenness_centrality(G)
-    closeness_centrality = nx.closeness_centrality(G)
-    return degree_centrality, betweenness_centrality, closeness_centrality
-
-
-degree_centrality, betweenness_centrality, closeness_centrality = compute_centrality(G)
-
-
-def get_best_nodes_in_shortest_paths(G, seed_set, top_k=3):
+def find_top_influential_nodes_in_shortest_paths(
+    G, seed_set, top_k=3, decay_factor=0.5
+):
     path_nodes = set()
     for i in range(len(seed_set)):
         for j in range(i + 1, len(seed_set)):
@@ -429,78 +401,64 @@ def get_best_nodes_in_shortest_paths(G, seed_set, top_k=3):
             except nx.NetworkXNoPath:
                 continue
 
-    path_nodes -= set(seed_set)
-    node_centralities = {
-        node: (
-            degree_centrality.get(node, 0),
-            betweenness_centrality.get(node, 0),
-            closeness_centrality.get(node, 0),
-        )
+    influence_scores = {
+        node: calculate_propagation_probability(G, node, seed_set, decay_factor)
         for node in path_nodes
     }
-
-    top_nodes = sorted(
-        node_centralities,
-        key=lambda node: (
-            node_centralities[node][0]
-            + node_centralities[node][1]
-            + node_centralities[node][2]
-        ),
-        reverse=True,
+    top_influential_nodes = sorted(
+        influence_scores, key=influence_scores.get, reverse=True
     )[:top_k]
 
-    return top_nodes
+    return top_influential_nodes
 
 
-top_k = len(seed_set)
-best_nodes = get_best_nodes_in_shortest_paths(G, seed_set, top_k=top_k)
+def visualize_top_influential_nodes(G, seed_set, top_k=3, decay_factor=0.5):
+    top_influential_nodes = find_top_influential_nodes_in_shortest_paths(
+        G, seed_set, top_k, decay_factor
+    )
+    pos = nx.kamada_kawai_layout(G)
+
+    for node in top_influential_nodes:
+        influence_scores = calculate_influence(G, node, decay_factor)
+        max_influence = max(influence_scores.values(), default=1)
+        norm_influence_scores = {
+            n: influence_scores[n] / max_influence for n in G.nodes()
+        }
+
+        plt.figure(figsize=(10, 8))
+        fig, ax = plt.subplots(figsize=(10, 8))
+
+        node_colors = [plt.cm.viridis(norm_influence_scores[n]) for n in G.nodes()]
+
+        nx.draw(G, pos, node_color=node_colors, node_size=500, edge_color="gray")
+        nx.draw_networkx_nodes(G, pos, nodelist=[node], node_color="red", node_size=700)
+        nx.draw_networkx_labels(G, pos)
+
+        plt.title(f"Influence of Node {node}")
+        sm = plt.cm.ScalarMappable(
+            cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=max_influence)
+        )
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax)
+        cbar.set_label("Influence Score")
+
+        plt.savefig(os.path.join(output_dir, f"iinfluence_node_{node}.png"), dpi=720)
+        plt.close()
 
 
-def prepare_plot_data(nodes, centrality_measures):
-    node_labels = {node: f"Node {node}" for node in nodes}
-    centralities = [centrality_measures[node] for node in nodes]
-    return node_labels, centralities
-
-
-seed_set_labels, seed_set_centralities = prepare_plot_data(seed_set, degree_centrality)
-best_nodes_labels, best_nodes_centralities = prepare_plot_data(
-    best_nodes, degree_centrality
-)
-
-fig, axs = plt.subplots(2, 3, figsize=(18, 12), constrained_layout=True)
-fig.suptitle("Centrality Measures Comparison", fontsize=16)
-
-for idx, (centrality_name, centrality_values) in enumerate(
-    [
-        ("Degree", degree_centrality),
-        ("Betweenness", betweenness_centrality),
-        ("Closeness", closeness_centrality),
-    ]
-):
-    ax = axs[0, idx]
-    values = [centrality_values[node] for node in seed_set]
-    labels = [f"Node {node}" for node in seed_set]
-    ax.bar(labels, values, color="skyblue")
-    ax.set_title(f"Seed Set - {centrality_name}")
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-
-for idx, (centrality_name, centrality_values) in enumerate(
-    [
-        ("Degree", degree_centrality),
-        ("Betweenness", betweenness_centrality),
-        ("Closeness", closeness_centrality),
-    ]
-):
-    ax = axs[1, idx]
-    values = [centrality_values[node] for node in best_nodes]
-    labels = [f"Node {node}" for node in best_nodes]
-    ax.bar(labels, values, color="salmon")
-    ax.set_title(f"Best Nodes - {centrality_name}")
-    ax.set_xticklabels(labels, rotation=45, ha="right")
-
-plt.savefig(os.path.join(output_dir, "multi.png"))
-plt.close()
-
+save_highlight_seed_neighbors(G, seed_set, "highlight_seed_neighbors.png")
+save_highlight_shortest_paths(G, seed_set, "highlight_shortest_paths.png")
+save_heatmap_node_influence(G, seed_set, "heatmap_node_influence.png")
+save_replacement_process_visualization(G, seed_set, "replacement_process_step")
 save_influence_convergence_visualization(
-    G, seed_set, iterations=5, filename="convergence.gif"
+    G, seed_set, iterations=4, filename="influence_convergence.png"
 )
+save_node_influence_in_seed_set(G, seed_set, "node_influence_in_seed_set.png")
+save_node_influence_seed_and_shortest_paths(
+    G, seed_set, "node_influence_seed_and_shortest_paths.png"
+)
+save_individual_node_influence(G, seed_set)
+save_top_influential_shortest_path_nodes(
+    G, seed_set, top_k=3, filename="top_influential_shortest_path_nodes.png"
+)
+visualize_top_influential_nodes(G, seed_set, top_k=3)

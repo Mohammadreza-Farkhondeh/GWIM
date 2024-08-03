@@ -1,16 +1,30 @@
-import logging
+from multiprocessing import Pool, cpu_count
 
 from src.utils import get_result
 
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logging.info("Script started.")
 
-get_result("fsfs", population_size=10, seed_set_size=3, max_iter=50)
+def main():
+    datasets = [
+        "enron",
+        "soc-twitter-follows",
+        "soc-linkedin",
+        "congress",
+        "hamsterster",
+        "food",
+        "pgp",
+    ]
+    population_size = 30
+    seed_set_size = 5
+    max_iter = 20
 
-# get_result("hamsterster", population_size=60, seed_set_size=5, max_iter=40)
+    args = [(dataset, population_size, seed_set_size, max_iter) for dataset in datasets]
 
-# get_result("pgp", population_size=80, seed_set_size=3, max_iter=30)
+    with Pool(processes=cpu_count()) as pool:
+        results = pool.map(get_result, args)
 
-# get_result("soc-twitter-follows", population_sisze=10, seed_set_size=3, max_iter=10)
+    for result in results:
+        print(result)
+
+
+if __name__ == "__main__":
+    main()
